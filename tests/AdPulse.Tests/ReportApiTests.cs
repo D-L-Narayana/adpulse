@@ -9,10 +9,13 @@ public class ReportApiTests : IClassFixture<AdPulseFactory>
     private readonly AdPulseFactory _f;
     public ReportApiTests(AdPulseFactory f) => _f = f;
 
+    private static string D(int day) => Flight.Day(day).ToString("yyyy-MM-dd");
+
     private static async Task<Guid> Seed(HttpClient c, string name, Channel ch, params (int day, long imp, long clk, long conv, decimal spend, decimal rev)[] rows)
     {
-        var id = (await (await c.PostJson("/api/campaigns", new CampaignRequest(name, ch, 100m, new DateOnly(2025, 4, 1), new DateOnly(2025, 4, 30)))).Json<CampaignResponse>()).Id;
-        await c.PutJson($"/api/campaigns/{id}/metrics", new MetricsUpsertRequest(rows.Select(r => new MetricRow(new DateOnly(2025, 4, r.day), r.imp, r.clk, r.conv, r.spend, r.rev)).ToList()));
+        var id = (await c.CreateCampaign(Flight.Request(name, ch, 100m))).Id;
+        var r = await c.PutJson($"/api/campaigns/{id}/metrics", new MetricsUpsertRequest(rows.Select(r => new MetricRow(Flight.Day(r.day), r.imp, r.clk, r.conv, r.spend, r.rev)).ToList()));
+        Assert.Equal(HttpStatusCode.OK, r.StatusCode);
         return id;
     }
 
@@ -26,7 +29,7 @@ public class ReportApiTests : IClassFixture<AdPulseFactory>
         await Seed(c, "M1", Channel.Meta, (1, 10000, 200, 4, 80m, 160m));
         await Seed(other, "Noise", Channel.Meta, (1, 999999, 99999, 9999, 99999m, 99999m));
 
-        var rep = await (await c.GetAsync("/api/reports/cross-channel?from=2025-04-01&to=2025-04-30")).Json<CrossChannelReport>();
+        var rep = await (await c.GetAsync($"/api/reports/cross-channel?from={D(1)}&to={D(30)}")).Json<CrossChannelReport>();
         Assert.Equal(2, rep.Channels.Count);
         var g = rep.Channels.Single(r => r.Channel == "GoogleAds");
         Assert.Equal(2, g.Campaigns); Assert.Equal(4000, g.Impressions); Assert.Equal(300, g.Clicks); Assert.Equal(20, g.Conversions);
@@ -39,17 +42,29 @@ public class ReportApiTests : IClassFixture<AdPulseFactory>
     public async Task Date_range_filters_rows()
     {
         var (c, _) = await _f.NewTenantClientAsync();
-        await Seed(c, "R", Channel.Amazon, (1, 10, 1, 1, 10m, 10m), (15, 10, 1, 1, 20m, 10m), (30, 10, 1, 1, 30m, 10m));
-        var rep = await (await c.GetAsync("/api/reports/cross-channel?from=2025-04-10&to=2025-04-20")).Json<CrossChannelReport>();
+        await Seed(c, "Range", Channel.Amazon, (1, 10, 1, 1, 10m, 10m), (5, 10, 1, 1, 20m, 10m), (9, 10, 1, 1, 30m, 10m));
+        var rep = await (await c.GetAsync($"/api/reports/cross-channel?from={D(3)}&to={D(7)}")).Json<CrossChannelReport>();
         Assert.Equal(20m, rep.Total.Spend);
     }
 
     [Fact]
-    public async Task Inverted_range_is_422()
+    public async Task Default_range_is_last_30_days()
     {
         var (c, _) = await _f.NewTenantClientAsync();
-        var r = await c.GetAsync("/api/reports/cross-channel?from=2025-04-20&to=2025-04-10");
+        await Seed(c, "Recent", Channel.Amazon, (1, 10, 1, 1, 10m, 10m));
+        var rep = await (await c.GetAsync("/api/reports/cross-channel")).Json<CrossChannelReport>();
+        Assert.Equal(Flight.Today, rep.To);
+        Assert.Equal(Flight.Today.AddDays(-29), rep.From);
+        Assert.Equal(10m, rep.Total.Spend);
+    }
+
+    [Fact]
+    public async Task Inverted_range_is_422_problem()
+    {
+        var (c, _) = await _f.NewTenantClientAsync();
+        var r = await c.GetAsync($"/api/reports/cross-channel?from={D(9)}&to={D(1)}");
         Assert.Equal(HttpStatusCode.UnprocessableEntity, r.StatusCode);
+        Assert.Equal("invalid_range", (await r.Problem()).Code);
     }
 
     [Fact]
@@ -66,9 +81,9 @@ public class ReportApiTests : IClassFixture<AdPulseFactory>
         var (c, _) = await _f.NewTenantClientAsync();
         await Seed(c, "D1", Channel.Meta, (1, 10, 1, 1, 10m, 1m), (2, 10, 1, 1, 20m, 1m));
         await Seed(c, "D2", Channel.Meta, (1, 10, 1, 1, 5m, 1m));
-        var rows = await (await c.GetAsync("/api/reports/daily?from=2025-04-01&to=2025-04-02")).Json<List<Dictionary<string, System.Text.Json.JsonElement>>>();
+        var rows = await (await c.GetAsync($"/api/reports/daily?from={D(1)}&to={D(2)}")).Json<List<DailyTrendRow>>();
         Assert.Equal(2, rows.Count);
-        Assert.Equal(15m, rows[0]["spend"].GetDecimal());
-        Assert.Equal(20m, rows[1]["spend"].GetDecimal());
+        Assert.Equal(15m, rows[0].Spend); Assert.Equal(Flight.Day(1), rows[0].Date);
+        Assert.Equal(20m, rows[1].Spend);
     }
 }

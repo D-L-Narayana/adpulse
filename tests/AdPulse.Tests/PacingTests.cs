@@ -44,6 +44,28 @@ public class PacingTests
         Assert.Equal(expected, Pacing.Compute(Flight(), actual, new DateOnly(2025, 1, 5)).Status);
 
     [Fact]
+    public void Band_is_ten_percent_either_side_of_100()
+    {
+        Assert.Equal(10m, Pacing.BandPercent);
+        Assert.Equal(90m, Pacing.UnderThreshold);
+        Assert.Equal(110m, Pacing.OverThreshold);
+    }
+
+    [Fact]
+    public void Deviation_is_actual_minus_expected()
+    {
+        Assert.Equal(200m, Pacing.Compute(Flight(), 700m, new DateOnly(2025, 1, 5)).Deviation);
+        Assert.Equal(-300m, Pacing.Compute(Flight(), 200m, new DateOnly(2025, 1, 5)).Deviation);
+    }
+
+    [Fact]
+    public void Suggested_budget_never_negative_when_overspent_beyond_total()
+    {
+        var p = Pacing.Compute(Flight(), 5000m, new DateOnly(2025, 1, 5));
+        Assert.Equal(0m, p.RemainingBudget); Assert.Equal(0m, p.SuggestedDailyBudget); Assert.Equal("over", p.Status);
+    }
+
+    [Fact]
     public void Before_start_is_not_started_and_never_divides_by_zero()
     {
         var p = Pacing.Compute(Flight(), 0m, new DateOnly(2024, 12, 20));
