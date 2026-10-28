@@ -8,6 +8,7 @@ services:
     environment:
       Database__Provider: SqlServer
       ConnectionStrings__Default: "Server=mssql,1433;Database=adpulse;User Id=sa;Password=AdPulse!Dev2025;TrustServerCertificate=True"
+      Seed__Enabled: "false"          # set "true" for the 502-tenant benchmark fixture
       Logging__LogstashTcp: "tcp://logstash:5000"
       Cors__Origins__0: "http://localhost:5173"
       Cors__Origins__1: "https://adpulse-dashboard-nu.vercel.app"

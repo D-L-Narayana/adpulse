@@ -20,7 +20,7 @@ How the p95 numbers quoted in the README were produced, so they can be reproduce
 
 ```bash
 # 1. start the API with the full seed (first start seeds 500 tenants, ~5 s)
-ASPNETCORE_URLS=http://localhost:5080 dotnet run --project src/AdPulse.Api
+Seed__Enabled=true ASPNETCORE_URLS=http://localhost:5080 dotnet run --project src/AdPulse.Api
 
 # 2. run the bench
 python3 scripts/bench.py --base http://localhost:5080 --key acme-demo-key --concurrency 16 --requests 400
@@ -35,23 +35,23 @@ k6 run -e BASE=http://localhost:5080 -e KEY=acme-demo-key scripts/bench.k6.js
 
 | Endpoint | Requests | Errors | p50 ms | p95 ms | p99 ms | max ms | req/s |
 |---|---:|---:|---:|---:|---:|---:|---:|
-| `GET /api/campaigns` | 400 | 0 | 12.5 | 19.1 | 25.5 | 29.9 | 1212 |
-| `GET /api/campaigns/summary` | 400 | 0 | 15.7 | 38.9 | 46.1 | 56.0 | 895 |
-| `GET /api/reports/cross-channel` | 400 | 0 | 15.8 | 58.9 | 243.4 | 300.0 | 602 |
-| `GET /api/reports/daily` | 400 | 0 | 10.9 | 25.8 | 35.8 | 75.3 | 1284 |
-| `GET /api/campaigns/{id}/pacing` | 400 | 0 | 10.3 | 14.6 | 18.9 | 40.9 | 1478 |
-| `GET /api/campaigns/{id}/kpis` | 400 | 0 | 11.2 | 25.2 | 35.0 | 64.4 | 1240 |
+| `GET /api/v1/campaigns` | 400 | 0 | 12.5 | 19.1 | 25.5 | 29.9 | 1212 |
+| `GET /api/v1/campaigns/summary` | 400 | 0 | 15.7 | 38.9 | 46.1 | 56.0 | 895 |
+| `GET /api/v1/reports/cross-channel` | 400 | 0 | 15.8 | 58.9 | 243.4 | 300.0 | 602 |
+| `GET /api/v1/reports/daily` | 400 | 0 | 10.9 | 25.8 | 35.8 | 75.3 | 1284 |
+| `GET /api/v1/campaigns/{id}/pacing` | 400 | 0 | 10.3 | 14.6 | 18.9 | 40.9 | 1478 |
+| `GET /api/v1/campaigns/{id}/kpis` | 400 | 0 | 11.2 | 25.2 | 35.0 | 64.4 | 1240 |
 
 `tenant-0250-key` (synthetic tenant, 14-day history) – 16 concurrent clients, 200 requests per endpoint:
 
 | Endpoint | Requests | Errors | p50 ms | p95 ms | p99 ms | max ms | req/s |
 |---|---:|---:|---:|---:|---:|---:|---:|
-| `GET /api/campaigns` | 200 | 0 | 7.1 | 18.5 | 24.3 | 33.9 | 1759 |
-| `GET /api/campaigns/summary` | 200 | 0 | 9.9 | 37.7 | 57.3 | 66.4 | 1110 |
-| `GET /api/reports/cross-channel` | 200 | 0 | 7.9 | 29.1 | 43.3 | 60.7 | 1466 |
-| `GET /api/reports/daily` | 200 | 0 | 9.4 | 17.1 | 34.9 | 45.9 | 1546 |
-| `GET /api/campaigns/{id}/pacing` | 200 | 0 | 8.9 | 22.0 | 32.8 | 38.3 | 1583 |
-| `GET /api/campaigns/{id}/kpis` | 200 | 0 | 9.2 | 22.9 | 35.7 | 38.5 | 1451 |
+| `GET /api/v1/campaigns` | 200 | 0 | 7.1 | 18.5 | 24.3 | 33.9 | 1759 |
+| `GET /api/v1/campaigns/summary` | 200 | 0 | 9.9 | 37.7 | 57.3 | 66.4 | 1110 |
+| `GET /api/v1/reports/cross-channel` | 200 | 0 | 7.9 | 29.1 | 43.3 | 60.7 | 1466 |
+| `GET /api/v1/reports/daily` | 200 | 0 | 9.4 | 17.1 | 34.9 | 45.9 | 1546 |
+| `GET /api/v1/campaigns/{id}/pacing` | 200 | 0 | 8.9 | 22.0 | 32.8 | 38.3 | 1583 |
+| `GET /api/v1/campaigns/{id}/kpis` | 200 | 0 | 9.2 | 22.9 | 35.7 | 38.5 | 1451 |
 
 **Headline:** every dashboard endpoint stays under **60 ms p95** at 16 concurrent clients on a 2-vCPU box with
 the 500-tenant data set; the single-row endpoints (`pacing`, list) are ~15–20 ms p95. The one visible outlier
@@ -64,7 +64,7 @@ aggregate; it disappears on the second tenant run.
 * Composite indexes match the tenant filter: `(TenantId, Status)`, `(TenantId, Date)`, `(CampaignId, Date)`,
   so the global query filter `WHERE TenantId = @tenant` is always an index seek.
 * `AsNoTracking()` on every read path; the API key → tenant lookup is a unique index hit.
-* `/api/campaigns/summary` collapses what used to be N+1 calls (campaign + KPIs + pacing per row) into
+* `/api/v1/campaigns/summary` collapses what used to be N+1 calls (campaign + KPIs + pacing per row) into
   two queries (campaign list + one grouped aggregate).
 
 ## Repeating against SQL Server

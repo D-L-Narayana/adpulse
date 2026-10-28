@@ -11,3 +11,6 @@ TestResults/
 .vercel/
 *.feature.cs
 web/.vercel/
+publish/
+*.zip
+appsettings.Production.json

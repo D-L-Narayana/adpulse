@@ -1,0 +1,14 @@
+# docker compose -f docker-compose.yml -f docker-compose.postgres.yml up --build
+# Swaps SQL Server for a local PostgreSQL 17 (same schema layout as the Supabase deployment: schema "adpulse").
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment: { POSTGRES_PASSWORD: adpulse, POSTGRES_DB: adpulse }
+    ports: ["5432:5432"]
+  api:
+    environment:
+      Database__Provider: Postgres
+      ConnectionStrings__Default: "Host=postgres;Database=adpulse;Username=postgres;Password=adpulse"
+    depends_on: [postgres, logstash]
+  mssql:
+    profiles: ["disabled"]

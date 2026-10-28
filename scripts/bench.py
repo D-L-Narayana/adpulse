@@ -17,12 +17,12 @@ import urllib.request
 from concurrent.futures import ThreadPoolExecutor
 
 ENDPOINTS = [
-    ("GET", "/api/campaigns"),
-    ("GET", "/api/campaigns/summary"),
-    ("GET", "/api/reports/cross-channel"),
-    ("GET", "/api/reports/daily"),
-    ("GET", "/api/campaigns/{id}/pacing"),
-    ("GET", "/api/campaigns/{id}/kpis"),
+    ("GET", "/api/v1/campaigns"),
+    ("GET", "/api/v1/campaigns/summary"),
+    ("GET", "/api/v1/reports/cross-channel"),
+    ("GET", "/api/v1/reports/daily"),
+    ("GET", "/api/v1/campaigns/{id}/pacing"),
+    ("GET", "/api/v1/campaigns/{id}/kpis"),
 ]
 
 
@@ -54,7 +54,7 @@ def main():
     a = ap.parse_args()
 
     # resolve a campaign id for the per-campaign endpoints
-    req = urllib.request.Request(a.base + "/api/campaigns", headers={"X-Api-Key": a.key})
+    req = urllib.request.Request(a.base + "/api/v1/campaigns", headers={"X-Api-Key": a.key})
     campaigns = json.load(urllib.request.urlopen(req, timeout=30))
     if not campaigns:
         raise SystemExit("tenant has no campaigns - run with the seeded demo key")

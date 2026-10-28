@@ -106,6 +106,19 @@ public sealed class ApiDriver : IDisposable
         if (string.IsNullOrEmpty(CurrentTenant)) CurrentTenant = name;
     }
 
+    /// <summary>Registers a client for a tenant created through the public signup endpoint.</summary>
+    public void AddSignedUpTenant(string name, string apiKey)
+    {
+        var c = _factory.CreateClient();
+        c.DefaultRequestHeaders.Add(TenantMiddleware.HeaderName, apiKey);
+        _clients[name] = c;
+        NewestTenant = name;
+        if (string.IsNullOrEmpty(CurrentTenant)) CurrentTenant = name;
+    }
+
+    public string NewestTenant { get; private set; } = "";
+    public IServiceProvider Services => _factory.Services;
+
     private static readonly System.Text.Json.JsonSerializerOptions JsonOpts = new(System.Text.Json.JsonSerializerDefaults.Web);
 
     public async Task<T> Read<T>() => System.Text.Json.JsonSerializer.Deserialize<T>(await Body(), JsonOpts)!;

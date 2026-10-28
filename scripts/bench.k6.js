@@ -22,17 +22,17 @@ export const options = {
 const params = (name) => ({ headers: { 'X-Api-Key': KEY }, tags: { name } });
 
 export function setup() {
-  const campaigns = http.get(`${BASE}/api/campaigns`, params('list')).json();
+  const campaigns = http.get(`${BASE}/api/v1/campaigns`, params('list')).json();
   return { id: campaigns[0].id };
 }
 
 export default function (data) {
   // one "dashboard refresh" = the four calls the Vue app makes
   const res = http.batch([
-    ['GET', `${BASE}/api/campaigns/summary`, null, params('summary')],
-    ['GET', `${BASE}/api/reports/cross-channel`, null, params('cross-channel')],
-    ['GET', `${BASE}/api/reports/daily`, null, params('daily')],
-    ['GET', `${BASE}/api/campaigns/${data.id}/pacing`, null, params('pacing')],
+    ['GET', `${BASE}/api/v1/campaigns/summary`, null, params('summary')],
+    ['GET', `${BASE}/api/v1/reports/cross-channel`, null, params('cross-channel')],
+    ['GET', `${BASE}/api/v1/reports/daily`, null, params('daily')],
+    ['GET', `${BASE}/api/v1/campaigns/${data.id}/pacing`, null, params('pacing')],
   ]);
   res.forEach((r) => check(r, { 'status 200': (x) => x.status === 200 }));
   sleep(0.5);
