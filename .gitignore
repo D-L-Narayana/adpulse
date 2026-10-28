@@ -1,0 +1,10 @@
+bin/
+obj/
+*.db
+*.db-*
+node_modules/
+dist/
+.env
+.vs/
+.idea/
+TestResults/
