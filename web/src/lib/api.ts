@@ -335,12 +335,12 @@ export const api = {
 
   reportSummary: async (key: string, q: { from?: string; to?: string }): Promise<KpiRow> => {
     const o = await request<Record<string, unknown>>('/reports/summary', { key, query: q })
-    const total = pick<Record<string, unknown>>(o, 'total', 'current', 'totals') ?? o
+    const total = pick<Record<string, unknown>>(o, 'total', 'current', 'totals', 'window') ?? o
     return normalizeKpiRow(total)
   },
 
   reportByChannel: async (key: string, q: { from?: string; to?: string }): Promise<ByChannelReport> => {
-    const o = await request<unknown>('/reports/by-channel', { key, query: q })
+    const o = await request<unknown>('/reports/cross-channel', { key, query: q })
     const obj = (Array.isArray(o) ? { channels: o } : (o as Record<string, unknown>)) ?? {}
     const channels = asList(pick(obj, 'channels', 'rows', 'items') ?? obj).map(normalizeKpiRow)
     const totalRaw = pick<Record<string, unknown>>(obj, 'total')
@@ -359,10 +359,27 @@ export const api = {
   },
 
   reportTrend: async (key: string, q: { from?: string; to?: string }): Promise<TrendRow[]> =>
-    asList(await request('/reports/trend', { key, query: q })).map(normalizeTrendRow),
+    asList(await request('/reports/daily', { key, query: q })).map(normalizeTrendRow),
 
-  reportPacing: async (key: string, asOf?: string): Promise<Pacing[]> =>
-    asList(await request('/reports/pacing', { key, query: { asOf } })).map(normalizePacing),
+  /**
+   * Pacing for every non-completed campaign. The API exposes pacing per campaign (`/campaigns/{id}/pacing`), so this
+   * fans out from `/campaigns/summary`; a campaign whose pacing call fails is simply left out.
+   */
+  reportPacing: async (key: string, asOf?: string): Promise<Pacing[]> => {
+    const campaigns = asList(await request('/campaigns/summary', { key, query: { asOf } })).map(normalizeSummary)
+    const live = campaigns.filter((c) => c.status !== 'Completed')
+    const rows = await Promise.all(
+      live.map(async (c): Promise<Pacing | null> => {
+        try {
+          const p = normalizePacing(await request<Record<string, unknown>>('/campaigns/' + c.id + '/pacing', { key, query: { asOf } }))
+          return { ...p, campaignName: p.campaignName ?? c.name, channel: p.channel ?? c.channel }
+        } catch {
+          return null
+        }
+      }),
+    )
+    return rows.filter((r): r is Pacing => r !== null)
+  },
 
   /** Dry-run a CSV import: detected format, column mapping, first rows and warnings. Nothing is written. */
   previewCsv: async (key: string, file: File | Blob, opts: { fileName?: string; signal?: AbortSignal } = {}): Promise<ImportPreview> => {
