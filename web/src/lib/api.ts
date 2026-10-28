@@ -171,9 +171,9 @@ const str = (v: unknown, d = ''): string => (v === undefined || v === null ? d :
 
 export function normalizePacingStatus(v: unknown): PacingStatus {
   const s = str(v).toLowerCase().replace(/[_\s]/g, '-')
-  if (s === 'under' || s === 'underpacing' || s === 'under-pace') return 'under'
-  if (s === 'over' || s === 'overpacing' || s === 'over-pace') return 'over'
-  if (s === 'on-track' || s === 'ontrack' || s === 'on-pace' || s === 'onpace') return 'on-track'
+  if (s.startsWith('under')) return 'under'
+  if (s.startsWith('over')) return 'over'
+  if (s === 'on-track' || s === 'ontrack' || s === 'on-pace' || s === 'onpace' || s === 'ok' || s === 'healthy') return 'on-track'
   return 'not-started'
 }
 
