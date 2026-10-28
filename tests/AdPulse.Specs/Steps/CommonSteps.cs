@@ -50,7 +50,7 @@ public sealed class CommonSteps(ApiDriver api)
 
     private async Task Create(string name, DateOnly start, DateOnly end, decimal budget)
     {
-        api.LastResponse = await api.Current.PostAsJsonAsync("/api/campaigns", new CampaignRequest(name, Channel.GoogleAds, budget, start, end));
+        api.LastResponse = await api.Current.PostAsJsonAsync("/api/v1/campaigns", new CampaignRequest(name, Channel.GoogleAds, budget, start, end));
         Assert.Equal(HttpStatusCode.Created, api.LastResponse.StatusCode);
         api.CampaignId = (await api.Read<CampaignResponse>()).Id;
     }
@@ -60,7 +60,7 @@ public sealed class CommonSteps(ApiDriver api)
     [When(@"^I complete the campaign$")] public Task WhenComplete() => Transition("complete");
 
     private async Task Transition(string action) =>
-        api.LastResponse = await api.Current.PostAsync($"/api/campaigns/{api.CampaignId}/{action}", null);
+        api.LastResponse = await api.Current.PostAsync($"/api/v1/campaigns/{api.CampaignId}/{action}", null);
 
     [Then(@"^the response status is (\d+)$")]
     public void ThenStatus(int status) => Assert.Equal(status, (int)api.LastResponse!.StatusCode);
@@ -68,7 +68,7 @@ public sealed class CommonSteps(ApiDriver api)
     [Then(@"^the campaign status is ""(.*)""$")]
     public async Task ThenCampaignStatus(string status)
     {
-        var c = await (await api.Current.GetAsync($"/api/campaigns/{api.CampaignId}")).Content.ReadFromJsonAsync<CampaignResponse>();
+        var c = await (await api.Current.GetAsync($"/api/v1/campaigns/{api.CampaignId}")).Content.ReadFromJsonAsync<CampaignResponse>();
         Assert.Equal(Enum.Parse<CampaignStatus>(status), c!.Status);
     }
 
@@ -93,7 +93,7 @@ public sealed class CommonSteps(ApiDriver api)
     [Then(@"^editing the campaign is rejected with (\d+) and problem type ""(.*)""$")]
     public async Task ThenEditRejected(int status, string code)
     {
-        api.LastResponse = await api.Current.PutAsJsonAsync($"/api/campaigns/{api.CampaignId}", new CampaignRequest("Renamed", Channel.Meta, 50m, Today, Today.AddDays(5)));
+        api.LastResponse = await api.Current.PutAsJsonAsync($"/api/v1/campaigns/{api.CampaignId}", new CampaignRequest("Renamed", Channel.Meta, 50m, Today, Today.AddDays(5)));
         ThenStatus(status);
         await ThenProblem(code);
     }

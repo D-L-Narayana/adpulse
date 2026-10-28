@@ -19,7 +19,7 @@ public class SeederTests : IClassFixture<SeededFactory>
         Assert.True(await db.Tenants.CountAsync() >= 502);
         Assert.True(await db.Campaigns.IgnoreQueryFilters().CountAsync() >= 1000);
         Assert.True(await db.DailyMetrics.IgnoreQueryFilters().CountAsync() >= 10_000);
-        Assert.Equal(await db.Tenants.CountAsync(), await db.Tenants.Select(t => t.ApiKey).Distinct().CountAsync());
+        Assert.Equal(await db.Tenants.CountAsync(), await db.Tenants.Select(t => t.ApiKeyHash).Distinct().CountAsync());
     }
 
     [Fact]
@@ -35,8 +35,8 @@ public class SeederTests : IClassFixture<SeededFactory>
     [Fact]
     public async Task Demo_tenant_sees_only_its_own_campaigns()
     {
-        var acme = await (await _f.ClientFor(DbSeeder.AcmeKey).GetAsync("/api/campaigns")).Json<List<CampaignResponse>>();
-        var globex = await (await _f.ClientFor(DbSeeder.GlobexKey).GetAsync("/api/campaigns")).Json<List<CampaignResponse>>();
+        var acme = await (await _f.ClientFor(DbSeeder.AcmeKey).GetAsync("/api/v1/campaigns")).Json<List<CampaignResponse>>();
+        var globex = await (await _f.ClientFor(DbSeeder.GlobexKey).GetAsync("/api/v1/campaigns")).Json<List<CampaignResponse>>();
         Assert.Equal(4, acme.Count);
         Assert.Equal(4, globex.Count);
         Assert.Empty(acme.Select(c => c.Id).Intersect(globex.Select(c => c.Id)));
@@ -47,7 +47,7 @@ public class SeederTests : IClassFixture<SeededFactory>
     [Fact]
     public async Task Demo_pacing_covers_all_three_bands()
     {
-        var rows = await (await _f.ClientFor(DbSeeder.AcmeKey).GetAsync("/api/campaigns/summary")).Json<List<CampaignSummary>>();
+        var rows = await (await _f.ClientFor(DbSeeder.AcmeKey).GetAsync("/api/v1/campaigns/summary")).Json<List<CampaignSummary>>();
         Assert.Contains(rows, r => r.PacingStatus == "over");
         Assert.Contains(rows, r => r.PacingStatus == "under");
         Assert.Contains(rows, r => r.PacingStatus == "on-track");
@@ -60,9 +60,9 @@ public class SeederTests : IClassFixture<SeededFactory>
     public async Task Synthetic_tenant_report_only_counts_its_own_campaigns(int n)
     {
         var client = _f.ClientFor(DbSeeder.SyntheticKey(n));
-        var mine = await (await client.GetAsync("/api/campaigns")).Json<List<CampaignResponse>>();
+        var mine = await (await client.GetAsync("/api/v1/campaigns")).Json<List<CampaignResponse>>();
         Assert.InRange(mine.Count, 2, 4);
-        var rep = await (await client.GetAsync("/api/reports/cross-channel?from=2000-01-01&to=2100-01-01")).Json<CrossChannelReport>();
+        var rep = await (await client.GetAsync("/api/v1/reports/cross-channel?from=2000-01-01&to=2100-01-01")).Json<CrossChannelReport>();
         Assert.True(rep.Total.Campaigns <= mine.Count);
     }
 }

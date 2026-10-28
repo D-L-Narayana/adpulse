@@ -2,6 +2,7 @@ using AdPulse.Api.Contracts;
 using AdPulse.Api.Data;
 using AdPulse.Api.Domain;
 using AdPulse.Api.Services;
+using AdPulse.Api.Tenancy;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
 
@@ -11,7 +12,7 @@ public static class CampaignEndpoints
 {
     public static IEndpointRouteBuilder MapCampaigns(this IEndpointRouteBuilder app)
     {
-        var g = app.MapGroup("/api/campaigns").WithTags("Campaigns");
+        var g = app.MapGroup("/api/v1/campaigns").WithTags("Campaigns");
 
         g.MapGet("/", async (AdPulseDbContext db, CampaignStatus? status, Channel? channel) =>
         {
@@ -57,7 +58,7 @@ public static class CampaignEndpoints
             return c is null ? TypedResults.NotFound() : TypedResults.Ok(CampaignResponse.From(c));
         });
 
-        g.MapPost("/", async (AdPulseDbContext db, CampaignRequest req, HttpContext http) =>
+        g.MapPost("/", async (AdPulseDbContext db, CampaignRequest req, HttpContext http, EventBus bus, TenantContext tenant) =>
         {
             if (Problems.Validate(http, req) is { } bad) return bad;
             if (req.EndDate < req.StartDate) return Problems.Create(http, 422, "invalid_dates", "EndDate must be on or after StartDate.");
@@ -67,10 +68,11 @@ public static class CampaignEndpoints
             var c = new Campaign { Id = Guid.NewGuid(), Name = req.Name.Trim(), Channel = req.Channel, DailyBudget = req.DailyBudget, StartDate = req.StartDate, EndDate = req.EndDate };
             db.Campaigns.Add(c);
             await db.SaveChangesAsync();
-            return Results.Created($"/api/campaigns/{c.Id}", CampaignResponse.From(c));
+            bus.Publish(tenant.TenantId, EventTypes.CampaignChanged, new { campaignId = c.Id, name = c.Name, status = c.Status.ToString(), channel = c.Channel.ToString(), reason = "created" });
+            return Results.Created($"/api/v1/campaigns/{c.Id}", CampaignResponse.From(c));
         });
 
-        g.MapPut("/{id:guid}", async (AdPulseDbContext db, Guid id, CampaignRequest req, HttpContext http) =>
+        g.MapPut("/{id:guid}", async (AdPulseDbContext db, Guid id, CampaignRequest req, HttpContext http, EventBus bus, TenantContext tenant) =>
         {
             if (Problems.Validate(http, req) is { } bad) return bad;
             if (req.EndDate < req.StartDate) return Problems.Create(http, 422, "invalid_dates", "EndDate must be on or after StartDate.");
@@ -81,20 +83,22 @@ public static class CampaignEndpoints
                 return Problems.Create(http, 409, "duplicate_name", $"A campaign named '{req.Name}' already exists for this tenant.");
             c.Name = req.Name.Trim(); c.Channel = req.Channel; c.DailyBudget = req.DailyBudget; c.StartDate = req.StartDate; c.EndDate = req.EndDate; c.UpdatedUtc = DateTime.UtcNow;
             await db.SaveChangesAsync();
+            bus.Publish(tenant.TenantId, EventTypes.CampaignChanged, new { campaignId = c.Id, name = c.Name, status = c.Status.ToString(), channel = c.Channel.ToString(), reason = "updated" });
             return Results.Ok(CampaignResponse.From(c));
         });
 
-        g.MapDelete("/{id:guid}", async (AdPulseDbContext db, Guid id) =>
+        g.MapDelete("/{id:guid}", async (AdPulseDbContext db, Guid id, EventBus bus, TenantContext tenant) =>
         {
             var c = await db.Campaigns.SingleOrDefaultAsync(x => x.Id == id);
             if (c is null) return Results.NotFound();
             db.Campaigns.Remove(c);
             await db.SaveChangesAsync();
+            bus.Publish(tenant.TenantId, EventTypes.CampaignChanged, new { campaignId = c.Id, name = c.Name, status = "Deleted", channel = c.Channel.ToString(), reason = "deleted" });
             return Results.NoContent();
         });
 
         // Lifecycle: Draft -> Active <-> Paused -> Completed. Invalid moves return RFC 7807 problem+json.
-        g.MapPost("/{id:guid}/{action:regex(^(activate|pause|complete)$)}", async (AdPulseDbContext db, Guid id, string action, HttpContext http) =>
+        g.MapPost("/{id:guid}/{action:regex(^(activate|pause|complete)$)}", async (AdPulseDbContext db, Guid id, string action, HttpContext http, EventBus bus, TenantContext tenant) =>
         {
             var c = await db.Campaigns.SingleOrDefaultAsync(x => x.Id == id);
             if (c is null) return Results.NotFound();
@@ -103,10 +107,11 @@ public static class CampaignEndpoints
                 return Problems.Create(http, err.Status, err.Code, err.Detail, new Dictionary<string, object?> { ["currentStatus"] = c.Status.ToString(), ["action"] = action });
             c.Status = CampaignLifecycle.Actions[action].To; c.UpdatedUtc = DateTime.UtcNow;
             await db.SaveChangesAsync();
+            bus.Publish(tenant.TenantId, EventTypes.CampaignChanged, new { campaignId = c.Id, name = c.Name, status = c.Status.ToString(), channel = c.Channel.ToString(), reason = action });
             return Results.Ok(CampaignResponse.From(c));
         }).WithSummary("Lifecycle transition: activate | pause | complete");
 
-        g.MapPut("/{id:guid}/metrics", async (AdPulseDbContext db, Guid id, MetricsUpsertRequest req, HttpContext http) =>
+        g.MapPut("/{id:guid}/metrics", async (AdPulseDbContext db, Guid id, MetricsUpsertRequest req, HttpContext http, EventBus bus, TenantContext tenant) =>
         {
             if (Problems.Validate(http, req) is { } bad) return bad;
             foreach (var r in req.Rows) if (Problems.Validate(http, r) is { } badRow) return badRow;
@@ -130,6 +135,7 @@ public static class CampaignEndpoints
                 }
             }
             await db.SaveChangesAsync();
+            bus.Publish(tenant.TenantId, EventTypes.MetricsUpserted, new { campaignId = id, rows = req.Rows.Count, from = dates.Min(), to = dates.Max() });
             return Results.Ok(new MetricsUpsertResponse(inserted, updated));
         }).WithSummary("Upsert daily spend/metrics rows (idempotent per date)");
 

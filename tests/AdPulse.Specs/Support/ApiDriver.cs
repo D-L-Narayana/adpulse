@@ -27,7 +27,9 @@ public sealed class SpecsFactory : WebApplicationFactory<Program>
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseEnvironment("Testing");
-        builder.UseSetting("Database:Seed", "false");
+        builder.UseSetting("Seed:Enabled", "false");
+        builder.UseSetting("Pacing:Enabled", "false");
+        builder.UseSetting("RateLimiting:SignupPerMinute", "100000");
         builder.UseSetting("Serilog:MinimumLevel:Default", "Warning");
         builder.UseSetting("Database:Provider", _sqlServer ? "SqlServer" : "Sqlite");
         if (_sqlServer)
@@ -95,7 +97,7 @@ public sealed class ApiDriver : IDisposable
         using (var scope = _factory.Services.CreateScope())
         {
             var db = scope.ServiceProvider.GetRequiredService<AdPulseDbContext>();
-            db.Tenants.Add(new Tenant { Id = Guid.NewGuid(), Name = name, ApiKey = apiKey });
+            db.Tenants.Add(new Tenant { Id = Guid.NewGuid(), Name = name, Slug = ApiKeys.Slugify(name), ApiKeyHash = ApiKeys.Hash(apiKey), ApiKeyPrefix = ApiKeys.DisplayPrefix(apiKey) });
             await db.SaveChangesAsync();
         }
         var c = _factory.CreateClient();

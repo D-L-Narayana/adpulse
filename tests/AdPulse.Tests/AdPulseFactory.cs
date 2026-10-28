@@ -37,8 +37,10 @@ public class AdPulseFactory : WebApplicationFactory<Program>
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseEnvironment("Testing");
-        builder.UseSetting("Database:Seed", Seed ? "true" : "false");
-        builder.UseSetting("Database:SeedTenantCount", SeedTenantCount.ToString());
+        builder.UseSetting("Seed:Enabled", Seed ? "true" : "false");
+        builder.UseSetting("Seed:TenantCount", SeedTenantCount.ToString());
+        builder.UseSetting("RateLimiting:SignupPerMinute", "100000");
+        builder.UseSetting("Pacing:Enabled", "false"); // the daily job is exercised explicitly in PacingAlertTests
         builder.UseSetting("Database:Provider", IsSqlServer ? "SqlServer" : "Sqlite");
         builder.UseSetting("Serilog:MinimumLevel:Default", "Warning");
         if (IsSqlServer)
@@ -58,17 +60,21 @@ public class AdPulseFactory : WebApplicationFactory<Program>
         });
     }
 
-    /// <summary>Creates a fresh tenant and returns a client that always sends its API key.</summary>
+    /// <summary>Signs up a fresh tenant through the real public endpoint and returns a client that always sends its API key.</summary>
     public async Task<(HttpClient Client, Tenant Tenant)> NewTenantClientAsync(string? name = null)
     {
-        var tenant = new Tenant { Id = Guid.NewGuid(), Name = name ?? $"Tenant {Guid.NewGuid():N}"[..20], ApiKey = Guid.NewGuid().ToString("N") };
-        using (var scope = Services.CreateScope())
-        {
-            var db = scope.ServiceProvider.GetRequiredService<AdPulseDbContext>();
-            db.Tenants.Add(tenant);
-            await db.SaveChangesAsync();
-        }
-        return (ClientFor(tenant.ApiKey), tenant);
+        var signup = await SignupAsync(name);
+        using var scope = Services.CreateScope();
+        var tenant = await scope.ServiceProvider.GetRequiredService<AdPulseDbContext>().Tenants.AsNoTracking().SingleAsync(t => t.Id == signup.Id);
+        return (ClientFor(signup.ApiKey), tenant);
+    }
+
+    public async Task<TenantCreatedResponse> SignupAsync(string? name = null, string? email = null)
+    {
+        using var anon = CreateClient();
+        var r = await anon.PostJson("/api/v1/tenants", new TenantSignupRequest(name ?? $"Tenant {Guid.NewGuid():N}"[..20], email ?? $"{Guid.NewGuid():N}@example.test"));
+        Assert.Equal(System.Net.HttpStatusCode.Created, r.StatusCode);
+        return await r.Json<TenantCreatedResponse>();
     }
 
     public HttpClient ClientFor(string apiKey)
@@ -141,14 +147,14 @@ internal static class Http
 
     public static async Task<CampaignResponse> CreateCampaign(this HttpClient c, CampaignRequest? req = null)
     {
-        var r = await c.PostJson("/api/campaigns", req ?? Flight.Request());
+        var r = await c.PostJson("/api/v1/campaigns", req ?? Flight.Request());
         Assert.Equal(System.Net.HttpStatusCode.Created, r.StatusCode);
         return await r.Json<CampaignResponse>();
     }
 
     public static async Task<CampaignResponse> Transition(this HttpClient c, Guid id, string action)
     {
-        var r = await c.PostAsync($"/api/campaigns/{id}/{action}", null);
+        var r = await c.PostAsync($"/api/v1/campaigns/{id}/{action}", null);
         Assert.Equal(System.Net.HttpStatusCode.OK, r.StatusCode);
         return await r.Json<CampaignResponse>();
     }

@@ -1,10 +1,11 @@
 using AdPulse.Api.Domain;
+using AdPulse.Api.Tenancy;
 using Microsoft.EntityFrameworkCore;
 
 namespace AdPulse.Api.Data;
 
 /// <summary>
-/// Seeds a realistic multi-tenant data set:
+/// Test / benchmark fixture only (runs when <c>Seed:Enabled=true</c>; never in production). Seeds a realistic multi-tenant data set:
 ///   * 2 named demo tenants (Acme Retail / Globex Travel) with 30 days of metrics – what the dashboard shows.
 ///   * N synthetic tenants (default 500) each with 2–4 campaigns and 14 days of metrics – used to exercise
 ///     tenant isolation and query-filter performance at a believable scale (~1.5k campaigns, ~21k metric rows).
@@ -33,8 +34,8 @@ public static class DbSeeder
         try
         {
             // ---- Demo tenants -------------------------------------------------------------------------
-            var acme = new Tenant { Id = Guid.NewGuid(), Name = "Acme Retail", ApiKey = AcmeKey };
-            var globex = new Tenant { Id = Guid.NewGuid(), Name = "Globex Travel", ApiKey = GlobexKey };
+            var acme = NewTenant("Acme Retail", "acme-retail", AcmeKey);
+            var globex = NewTenant("Globex Travel", "globex-travel", GlobexKey);
             db.Tenants.AddRange(acme, globex);
 
             // pace: multiplier on daily spend so the demo shows all three pacing bands
@@ -51,7 +52,7 @@ public static class DbSeeder
             var channels = Enum.GetValues<Channel>();
             for (var n = 1; n <= syntheticTenantCount; n++)
             {
-                var t = new Tenant { Id = Guid.NewGuid(), Name = $"{Industries[rng.Next(Industries.Length)]} Co {n:0000}", ApiKey = SyntheticKey(n) };
+                var t = NewTenant($"{Industries[rng.Next(Industries.Length)]} Co {n:0000}", $"tenant-{n:0000}", SyntheticKey(n));
                 db.Tenants.Add(t);
                 var campaignCount = 2 + rng.Next(3);
                 for (var k = 0; k < campaignCount; k++)
@@ -73,6 +74,9 @@ public static class DbSeeder
             db.ChangeTracker.Clear();
         }
     }
+
+    private static Tenant NewTenant(string name, string slug, string key) =>
+        new() { Id = Guid.NewGuid(), Name = name, Slug = slug, Email = $"{slug}@example.test", ApiKeyHash = ApiKeys.Hash(key), ApiKeyPrefix = ApiKeys.DisplayPrefix(key) };
 
     private static Campaign Build(Random rng, Tenant t, string name, Channel ch, decimal budget, DateOnly today, int historyDays,
         double ctr, double cvr, double cpc, double aov, double pace, CampaignStatus status = CampaignStatus.Active, int startOffset = 0)

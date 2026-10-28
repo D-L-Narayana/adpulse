@@ -38,7 +38,7 @@ public class LifecycleTests : IClassFixture<AdPulseFactory>
     {
         var (c, _) = await _f.NewTenantClientAsync();
         var id = await CampaignIn(c, from);
-        var r = await c.PostAsync($"/api/campaigns/{id}/{action}", null);
+        var r = await c.PostAsync($"/api/v1/campaigns/{id}/{action}", null);
         if (expected is null)
         {
             Assert.Equal(HttpStatusCode.Conflict, r.StatusCode);
@@ -47,7 +47,7 @@ public class LifecycleTests : IClassFixture<AdPulseFactory>
             Assert.Equal("Conflict", p.Title);
             Assert.Contains(from.ToString(), p.Detail);
             // state untouched
-            Assert.Equal(from, (await (await c.GetAsync($"/api/campaigns/{id}")).Json<CampaignResponse>()).Status);
+            Assert.Equal(from, (await (await c.GetAsync($"/api/v1/campaigns/{id}")).Json<CampaignResponse>()).Status);
         }
         else
         {
@@ -72,7 +72,7 @@ public class LifecycleTests : IClassFixture<AdPulseFactory>
     {
         var (c, _) = await _f.NewTenantClientAsync();
         var id = (await c.CreateCampaign(new CampaignRequest("Old Promo", Channel.Meta, 50m, Flight.Today.AddDays(-40), Flight.Today.AddDays(-10)))).Id;
-        var r = await c.PostAsync($"/api/campaigns/{id}/activate", null);
+        var r = await c.PostAsync($"/api/v1/campaigns/{id}/activate", null);
         Assert.Equal(HttpStatusCode.UnprocessableEntity, r.StatusCode);
         var p = await r.Problem();
         Assert.Equal("flight_ended", p.Code);
@@ -84,7 +84,7 @@ public class LifecycleTests : IClassFixture<AdPulseFactory>
     {
         var (c, _) = await _f.NewTenantClientAsync();
         var id = (await c.CreateCampaign()).Id;
-        var r = await c.PostAsync($"/api/campaigns/{id}/pause", null);
+        var r = await c.PostAsync($"/api/v1/campaigns/{id}/pause", null);
         var body = await r.Content.ReadFromJsonAsync<Dictionary<string, System.Text.Json.JsonElement>>();
         Assert.Equal(Problems.TypeBase + "invalid_transition", body!["type"].GetString());
         Assert.Equal(409, body["status"].GetInt32());
@@ -99,6 +99,6 @@ public class LifecycleTests : IClassFixture<AdPulseFactory>
     {
         var (c, _) = await _f.NewTenantClientAsync();
         var id = (await c.CreateCampaign()).Id;
-        Assert.Equal(HttpStatusCode.NotFound, (await c.PostAsync($"/api/campaigns/{id}/explode", null)).StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, (await c.PostAsync($"/api/v1/campaigns/{id}/explode", null)).StatusCode);
     }
 }

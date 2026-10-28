@@ -27,7 +27,7 @@ public class CampaignApiTests : IClassFixture<AdPulseFactory>
     [Fact]
     public async Task Api_without_key_is_401_problem_json()
     {
-        var r = await _f.CreateClient().GetAsync("/api/campaigns");
+        var r = await _f.CreateClient().GetAsync("/api/v1/campaigns");
         Assert.Equal(HttpStatusCode.Unauthorized, r.StatusCode);
         var body = await r.Problem();
         Assert.Equal("missing_api_key", body.Code);
@@ -38,7 +38,7 @@ public class CampaignApiTests : IClassFixture<AdPulseFactory>
     [Fact]
     public async Task Api_with_unknown_key_is_401()
     {
-        var r = await _f.ClientFor("nope").GetAsync("/api/campaigns");
+        var r = await _f.ClientFor("nope").GetAsync("/api/v1/campaigns");
         Assert.Equal(HttpStatusCode.Unauthorized, r.StatusCode);
         Assert.Equal("unknown_api_key", (await r.Problem()).Code);
     }
@@ -47,22 +47,23 @@ public class CampaignApiTests : IClassFixture<AdPulseFactory>
     public async Task Me_returns_resolved_tenant()
     {
         var (c, t) = await _f.NewTenantClientAsync("Me Tenant");
-        var me = await (await c.GetAsync("/api/me")).Json<Dictionary<string, string>>();
-        Assert.Equal(t.Id.ToString(), me["id"]);
-        Assert.Equal("Me Tenant", me["name"]);
+        var me = await (await c.GetAsync("/api/v1/tenants/me")).Json<TenantMeResponse>();
+        Assert.Equal(t.Id, me.Id);
+        Assert.Equal("Me Tenant", me.Name);
+        Assert.Equal(t.Slug, me.Slug);
     }
 
     [Fact]
     public async Task Create_then_get_round_trips()
     {
         var (c, _) = await _f.NewTenantClientAsync();
-        var created = await c.PostJson("/api/campaigns", Flight.Request());
+        var created = await c.PostJson("/api/v1/campaigns", Flight.Request());
         Assert.Equal(HttpStatusCode.Created, created.StatusCode);
         var dto = await created.Json<CampaignResponse>();
         Assert.Equal(CampaignStatus.Draft, dto.Status);
-        Assert.Equal($"/api/campaigns/{dto.Id}", created.Headers.Location!.ToString());
+        Assert.Equal($"/api/v1/campaigns/{dto.Id}", created.Headers.Location!.ToString());
 
-        var got = await (await c.GetAsync($"/api/campaigns/{dto.Id}")).Json<CampaignResponse>();
+        var got = await (await c.GetAsync($"/api/v1/campaigns/{dto.Id}")).Json<CampaignResponse>();
         Assert.Equal(dto, got);
     }
 
@@ -71,7 +72,7 @@ public class CampaignApiTests : IClassFixture<AdPulseFactory>
     {
         var (c, _) = await _f.NewTenantClientAsync();
         var created = await c.CreateCampaign(Flight.Request(ch: Channel.LinkedIn));
-        var raw = await (await c.GetAsync($"/api/campaigns/{created.Id}")).Content.ReadAsStringAsync();
+        var raw = await (await c.GetAsync($"/api/v1/campaigns/{created.Id}")).Content.ReadAsStringAsync();
         Assert.Contains("\"channel\":\"LinkedIn\"", raw);
         Assert.Contains("\"status\":\"Draft\"", raw);
     }
@@ -83,9 +84,9 @@ public class CampaignApiTests : IClassFixture<AdPulseFactory>
         var a = await c.CreateCampaign(Flight.Request("Alpha", Channel.Meta));
         await c.CreateCampaign(Flight.Request("Beta", Channel.GoogleAds));
         await c.Transition(a.Id, "activate");
-        var active = await (await c.GetAsync("/api/campaigns?status=Active")).Json<List<CampaignResponse>>();
+        var active = await (await c.GetAsync("/api/v1/campaigns?status=Active")).Json<List<CampaignResponse>>();
         Assert.Single(active); Assert.Equal("Alpha", active[0].Name);
-        var google = await (await c.GetAsync("/api/campaigns?channel=GoogleAds")).Json<List<CampaignResponse>>();
+        var google = await (await c.GetAsync("/api/v1/campaigns?channel=GoogleAds")).Json<List<CampaignResponse>>();
         Assert.Single(google); Assert.Equal("Beta", google[0].Name);
     }
 
@@ -93,7 +94,7 @@ public class CampaignApiTests : IClassFixture<AdPulseFactory>
     public async Task Validation_errors_are_422_problem_with_field_map()
     {
         var (c, _) = await _f.NewTenantClientAsync();
-        var r = await c.PostJson("/api/campaigns", Flight.Request(name: "x", budget: 0));
+        var r = await c.PostJson("/api/v1/campaigns", Flight.Request(name: "x", budget: 0));
         Assert.Equal(HttpStatusCode.UnprocessableEntity, r.StatusCode);
         Assert.Equal("application/problem+json", r.Content.Headers.ContentType?.MediaType);
         var body = await r.Content.ReadFromJsonAsync<Dictionary<string, System.Text.Json.JsonElement>>();
@@ -107,7 +108,7 @@ public class CampaignApiTests : IClassFixture<AdPulseFactory>
     public async Task End_before_start_is_rejected()
     {
         var (c, _) = await _f.NewTenantClientAsync();
-        var r = await c.PostJson("/api/campaigns", new CampaignRequest("Bad dates", Channel.Meta, 10, Flight.End, Flight.Start));
+        var r = await c.PostJson("/api/v1/campaigns", new CampaignRequest("Bad dates", Channel.Meta, 10, Flight.End, Flight.Start));
         Assert.Equal(HttpStatusCode.UnprocessableEntity, r.StatusCode);
         Assert.Equal("invalid_dates", (await r.Problem()).Code);
     }
@@ -117,11 +118,11 @@ public class CampaignApiTests : IClassFixture<AdPulseFactory>
     {
         var (a, _) = await _f.NewTenantClientAsync();
         var (b, _) = await _f.NewTenantClientAsync();
-        Assert.Equal(HttpStatusCode.Created, (await a.PostJson("/api/campaigns", Flight.Request("Same"))).StatusCode);
-        var dup = await a.PostJson("/api/campaigns", Flight.Request("Same"));
+        Assert.Equal(HttpStatusCode.Created, (await a.PostJson("/api/v1/campaigns", Flight.Request("Same"))).StatusCode);
+        var dup = await a.PostJson("/api/v1/campaigns", Flight.Request("Same"));
         Assert.Equal(HttpStatusCode.Conflict, dup.StatusCode);
         Assert.Equal("duplicate_name", (await dup.Problem()).Code);
-        Assert.Equal(HttpStatusCode.Created, (await b.PostJson("/api/campaigns", Flight.Request("Same"))).StatusCode);
+        Assert.Equal(HttpStatusCode.Created, (await b.PostJson("/api/v1/campaigns", Flight.Request("Same"))).StatusCode);
     }
 
     [Fact]
@@ -129,7 +130,7 @@ public class CampaignApiTests : IClassFixture<AdPulseFactory>
     {
         var (c, _) = await _f.NewTenantClientAsync();
         var created = await c.CreateCampaign(Flight.Request("Before"));
-        var r = await c.PutJson($"/api/campaigns/{created.Id}", Flight.Request("After", Channel.Amazon, 999m));
+        var r = await c.PutJson($"/api/v1/campaigns/{created.Id}", Flight.Request("After", Channel.Amazon, 999m));
         Assert.Equal(HttpStatusCode.OK, r.StatusCode);
         var updated = await r.Json<CampaignResponse>();
         Assert.Equal("After", updated.Name); Assert.Equal(Channel.Amazon, updated.Channel); Assert.Equal(999m, updated.DailyBudget);
@@ -143,7 +144,7 @@ public class CampaignApiTests : IClassFixture<AdPulseFactory>
         var id = (await c.CreateCampaign(Flight.Request("Life"))).Id;
         await c.Transition(id, "activate");
         Assert.Equal(CampaignStatus.Completed, (await c.Transition(id, "complete")).Status);
-        var edit = await c.PutJson($"/api/campaigns/{id}", Flight.Request("Life renamed"));
+        var edit = await c.PutJson($"/api/v1/campaigns/{id}", Flight.Request("Life renamed"));
         Assert.Equal(HttpStatusCode.Conflict, edit.StatusCode);
         Assert.Equal("campaign_completed", (await edit.Problem()).Code);
     }
@@ -158,15 +159,15 @@ public class CampaignApiTests : IClassFixture<AdPulseFactory>
             new(Flight.Day(1), 1000, 50, 5, 40m, 200m),
             new(Flight.Day(2), 2000, 80, 8, 60m, 320m),
         };
-        var first = await (await c.PutJson($"/api/campaigns/{id}/metrics", new MetricsUpsertRequest(rows))).Json<MetricsUpsertResponse>();
+        var first = await (await c.PutJson($"/api/v1/campaigns/{id}/metrics", new MetricsUpsertRequest(rows))).Json<MetricsUpsertResponse>();
         Assert.Equal((2, 0), (first.Inserted, first.Updated));
 
         rows[1] = rows[1] with { Spend = 65m };
         rows.Add(new(Flight.Day(3), 500, 10, 1, 9m, 30m));
-        var second = await (await c.PutJson($"/api/campaigns/{id}/metrics", new MetricsUpsertRequest(rows))).Json<MetricsUpsertResponse>();
+        var second = await (await c.PutJson($"/api/v1/campaigns/{id}/metrics", new MetricsUpsertRequest(rows))).Json<MetricsUpsertResponse>();
         Assert.Equal((1, 2), (second.Inserted, second.Updated));
 
-        var stored = await (await c.GetAsync($"/api/campaigns/{id}/metrics")).Json<List<MetricRow>>();
+        var stored = await (await c.GetAsync($"/api/v1/campaigns/{id}/metrics")).Json<List<MetricRow>>();
         Assert.Equal(3, stored.Count);
         Assert.Equal(65m, stored.Single(r => r.Date == Flight.Day(2)).Spend);
     }
@@ -177,12 +178,12 @@ public class CampaignApiTests : IClassFixture<AdPulseFactory>
         var (c, _) = await _f.NewTenantClientAsync();
         var id = (await c.CreateCampaign(Flight.Request("Bad metrics"))).Id;
         var d = Flight.Day(1);
-        var dup = await c.PutJson($"/api/campaigns/{id}/metrics", new MetricsUpsertRequest([new(d, 1, 1, 1, 1, 1), new(d, 2, 2, 2, 2, 2)]));
+        var dup = await c.PutJson($"/api/v1/campaigns/{id}/metrics", new MetricsUpsertRequest([new(d, 1, 1, 1, 1, 1), new(d, 2, 2, 2, 2, 2)]));
         Assert.Equal(HttpStatusCode.UnprocessableEntity, dup.StatusCode);
         Assert.Equal("duplicate_dates", (await dup.Problem()).Code);
-        var neg = await c.PutJson($"/api/campaigns/{id}/metrics", new MetricsUpsertRequest([new(d, -1, 1, 1, 1, 1)]));
+        var neg = await c.PutJson($"/api/v1/campaigns/{id}/metrics", new MetricsUpsertRequest([new(d, -1, 1, 1, 1, 1)]));
         Assert.Equal(HttpStatusCode.UnprocessableEntity, neg.StatusCode);
-        var empty = await c.PutJson($"/api/campaigns/{id}/metrics", new MetricsUpsertRequest([]));
+        var empty = await c.PutJson($"/api/v1/campaigns/{id}/metrics", new MetricsUpsertRequest([]));
         Assert.Equal(HttpStatusCode.UnprocessableEntity, empty.StatusCode);
     }
 
@@ -191,8 +192,8 @@ public class CampaignApiTests : IClassFixture<AdPulseFactory>
     {
         var (c, _) = await _f.NewTenantClientAsync();
         var id = (await c.CreateCampaign(Flight.Request("KPI"))).Id;
-        await c.PutJson($"/api/campaigns/{id}/metrics", new MetricsUpsertRequest([new(Flight.Day(1), 10_000, 250, 10, 125m, 500m), new(Flight.Day(2), 10_000, 250, 10, 125m, 500m)]));
-        var k = await (await c.GetAsync($"/api/campaigns/{id}/kpis")).Json<KpiRow>();
+        await c.PutJson($"/api/v1/campaigns/{id}/metrics", new MetricsUpsertRequest([new(Flight.Day(1), 10_000, 250, 10, 125m, 500m), new(Flight.Day(2), 10_000, 250, 10, 125m, 500m)]));
+        var k = await (await c.GetAsync($"/api/v1/campaigns/{id}/kpis")).Json<KpiRow>();
         Assert.Equal(2.5m, k.Ctr); Assert.Equal(0.5m, k.Cpc); Assert.Equal(12.5m, k.Cpa); Assert.Equal(4m, k.Roas); Assert.Equal(250m, k.Spend);
     }
 
@@ -202,12 +203,12 @@ public class CampaignApiTests : IClassFixture<AdPulseFactory>
         var (c, _) = await _f.NewTenantClientAsync();
         var a = (await c.CreateCampaign(Flight.Request("Pace A", budget: 100m))).Id;
         var b = (await c.CreateCampaign(Flight.Request("Pace B", budget: 100m))).Id;
-        await c.PutJson($"/api/campaigns/{a}/metrics", new MetricsUpsertRequest([new(Flight.Day(1), 1, 1, 1, 120m, 0), new(Flight.Day(2), 1, 1, 1, 130m, 0)]));
-        await c.PutJson($"/api/campaigns/{b}/metrics", new MetricsUpsertRequest([new(Flight.Day(1), 1, 1, 1, 10m, 0)]));
+        await c.PutJson($"/api/v1/campaigns/{a}/metrics", new MetricsUpsertRequest([new(Flight.Day(1), 1, 1, 1, 120m, 0), new(Flight.Day(2), 1, 1, 1, 130m, 0)]));
+        await c.PutJson($"/api/v1/campaigns/{b}/metrics", new MetricsUpsertRequest([new(Flight.Day(1), 1, 1, 1, 10m, 0)]));
 
-        var pa = await (await c.GetAsync($"/api/campaigns/{a}/pacing?asOf={Flight.Day(2):yyyy-MM-dd}")).Json<PacingResponse>();
+        var pa = await (await c.GetAsync($"/api/v1/campaigns/{a}/pacing?asOf={Flight.Day(2):yyyy-MM-dd}")).Json<PacingResponse>();
         Assert.Equal(250m, pa.ActualSpendToDate); Assert.Equal(200m, pa.ExpectedSpendToDate); Assert.Equal("over", pa.Status); Assert.Equal(50m, pa.Deviation);
-        var pb = await (await c.GetAsync($"/api/campaigns/{b}/pacing?asOf={Flight.Day(2):yyyy-MM-dd}")).Json<PacingResponse>();
+        var pb = await (await c.GetAsync($"/api/v1/campaigns/{b}/pacing?asOf={Flight.Day(2):yyyy-MM-dd}")).Json<PacingResponse>();
         Assert.Equal(10m, pb.ActualSpendToDate); Assert.Equal("under", pb.Status);
     }
 
@@ -220,8 +221,8 @@ public class CampaignApiTests : IClassFixture<AdPulseFactory>
         var b = (await c.CreateCampaign(Flight.Request("Sum B", budget: 100m))).Id;
         await c.Transition(b, "activate");
         await c.CreateCampaign(Flight.Request("Sum C draft", budget: 100m));
-        await c.PutJson($"/api/campaigns/{a}/metrics", new MetricsUpsertRequest([new(Flight.Day(1), 1000, 100, 10, 100m, 400m), new(Flight.Day(2), 1000, 100, 10, 100m, 400m)]));
-        var rows = await (await c.GetAsync($"/api/campaigns/summary?asOf={Flight.Day(2):yyyy-MM-dd}")).Json<List<CampaignSummary>>();
+        await c.PutJson($"/api/v1/campaigns/{a}/metrics", new MetricsUpsertRequest([new(Flight.Day(1), 1000, 100, 10, 100m, 400m), new(Flight.Day(2), 1000, 100, 10, 100m, 400m)]));
+        var rows = await (await c.GetAsync($"/api/v1/campaigns/summary?asOf={Flight.Day(2):yyyy-MM-dd}")).Json<List<CampaignSummary>>();
         Assert.Equal(3, rows.Count);
         Assert.Equal("not-started", rows.Single(r => r.Name == "Sum C draft").PacingStatus); // drafts are never "under"
         var sa = rows.Single(r => r.Name == "Sum A");
@@ -236,16 +237,16 @@ public class CampaignApiTests : IClassFixture<AdPulseFactory>
     {
         var (c, _) = await _f.NewTenantClientAsync();
         var id = (await c.CreateCampaign(Flight.Request("Del"))).Id;
-        await c.PutJson($"/api/campaigns/{id}/metrics", new MetricsUpsertRequest([new(Flight.Day(1), 1, 1, 1, 1, 1)]));
-        Assert.Equal(HttpStatusCode.NoContent, (await c.DeleteAsync($"/api/campaigns/{id}")).StatusCode);
-        Assert.Equal(HttpStatusCode.NotFound, (await c.GetAsync($"/api/campaigns/{id}/metrics")).StatusCode);
+        await c.PutJson($"/api/v1/campaigns/{id}/metrics", new MetricsUpsertRequest([new(Flight.Day(1), 1, 1, 1, 1, 1)]));
+        Assert.Equal(HttpStatusCode.NoContent, (await c.DeleteAsync($"/api/v1/campaigns/{id}")).StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, (await c.GetAsync($"/api/v1/campaigns/{id}/metrics")).StatusCode);
     }
 
     [Fact]
     public async Task Unknown_campaign_is_404()
     {
         var (c, _) = await _f.NewTenantClientAsync();
-        Assert.Equal(HttpStatusCode.NotFound, (await c.GetAsync($"/api/campaigns/{Guid.NewGuid()}")).StatusCode);
-        Assert.Equal(HttpStatusCode.NotFound, (await c.PostAsync($"/api/campaigns/{Guid.NewGuid()}/activate", null)).StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, (await c.GetAsync($"/api/v1/campaigns/{Guid.NewGuid()}")).StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, (await c.PostAsync($"/api/v1/campaigns/{Guid.NewGuid()}/activate", null)).StatusCode);
     }
 }
