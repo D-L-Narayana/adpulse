@@ -4,7 +4,7 @@
  * Proper axes with nice ticks, direct end labels instead of a legend, keyboard + pointer hover tooltip,
  * prefers-reduced-motion support and a toggleable accessible data table.
  */
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { areaPath, linePath, linearScale, niceTicks, pickIndices } from '../lib/chart'
 import { fmtDate, fmtMoney, fmtMoneyCompact, fmtSignedPct } from '../lib/format'
 import type { TrendRow } from '../lib/types'
@@ -15,16 +15,24 @@ const props = withDefaults(defineProps<{ rows: TrendRow[]; loading?: boolean; he
 const wrap = ref<HTMLDivElement | null>(null)
 const width = ref(640)
 let ro: ResizeObserver | null = null
-onMounted(() => {
-  if (wrap.value) width.value = wrap.value.clientWidth || 640
-  if (typeof ResizeObserver !== 'undefined' && wrap.value) {
-    ro = new ResizeObserver((entries) => {
-      const w = entries[0]?.contentRect.width
-      if (w) width.value = w
-    })
-    ro.observe(wrap.value)
-  }
-})
+// The canvas only exists once data has loaded, so attach the observer whenever the element (re)appears.
+watch(
+  wrap,
+  (el) => {
+    ro?.disconnect()
+    ro = null
+    if (!el) return
+    width.value = el.clientWidth || width.value
+    if (typeof ResizeObserver !== 'undefined') {
+      ro = new ResizeObserver((entries) => {
+        const w = entries[0]?.contentRect.width
+        if (w) width.value = w
+      })
+      ro.observe(el)
+    }
+  },
+  { flush: 'post' },
+)
 onBeforeUnmount(() => ro?.disconnect())
 
 const showTable = ref(false)
@@ -47,6 +55,7 @@ const series = computed<Point[]>(() => {
   })
 })
 const hasBudget = computed(() => series.value.some((p) => p.budget !== null))
+const hasSpend = computed(() => series.value.some((p) => p.spend > 0))
 const last = computed(() => series.value[series.value.length - 1])
 
 const insight = computed(() => {
@@ -59,16 +68,16 @@ const insight = computed(() => {
 const ariaLabel = computed(() => `Line chart. ${insight.value}. ${series.value.length} data points from ${fmtDate(series.value[0]?.date)} to ${fmtDate(last.value?.date)}. Use the data table toggle for exact values.`)
 
 /* ---- geometry ---- */
-const pad = { top: 14, right: 84, bottom: 28, left: 8 }
+const pad = computed(() => ({ top: 14, right: width.value < 480 ? 64 : 84, bottom: 28, left: 8 }))
 const yMax = computed(() => Math.max(1, ...series.value.map((p) => Math.max(p.spend, p.budget ?? 0))))
 const ticks = computed(() => niceTicks(yMax.value, 4))
 const yTop = computed(() => ticks.value[ticks.value.length - 1])
 const yLabelW = computed(() => Math.max(...ticks.value.map((t) => fmtMoneyCompact(t).length)) * 7 + 10)
 const plot = computed(() => ({
-  x0: pad.left + yLabelW.value,
-  x1: Math.max(pad.left + yLabelW.value + 40, width.value - pad.right),
-  y0: pad.top,
-  y1: props.height - pad.bottom,
+  x0: pad.value.left + yLabelW.value,
+  x1: Math.max(pad.value.left + yLabelW.value + 40, width.value - pad.value.right),
+  y0: pad.value.top,
+  y1: props.height - pad.value.bottom,
 }))
 const x = computed(() => linearScale([0, Math.max(1, series.value.length - 1)], [plot.value.x0, plot.value.x1]))
 const y = computed(() => linearScale([0, yTop.value], [plot.value.y1, plot.value.y0]))
@@ -137,13 +146,15 @@ const tip = computed(() => {
         <Skeleton v-if="loading" width="60%" height="16px" :inline="true" />
         <template v-else>{{ insight }}</template>
       </p>
-      <button type="button" class="toggle" :aria-pressed="showTable" :disabled="loading || !series.length" @click="showTable = !showTable">
+      <button type="button" class="toggle" :aria-pressed="showTable" :disabled="loading || !series.length || !hasSpend" @click="showTable = !showTable">
         {{ showTable ? 'Show chart' : 'Show data table' }}
       </button>
     </div>
 
     <div v-if="loading" :style="{ height: height + 'px' }"><Skeleton height="100%" radius="8px" /></div>
-    <div v-else-if="!series.length" class="none" :style="{ height: height + 'px' }"><p>No daily rows in this period.</p></div>
+    <div v-else-if="!series.length || !hasSpend" class="none" :style="{ height: height + 'px' }">
+      <p>{{ series.length ? 'No spend recorded in this period yet.' : 'No daily rows in this period.' }}</p>
+    </div>
 
     <template v-else>
       <div v-show="!showTable" ref="wrap" class="canvas" :style="{ height: height + 'px' }">
@@ -209,7 +220,7 @@ const tip = computed(() => {
         </table>
       </div>
     </template>
-    <p v-if="!loading && series.length && !hasBudget" class="note">No active campaign budgets in this period, so only actual spend is plotted.</p>
+    <p v-if="!loading && series.length && hasSpend && !hasBudget" class="note">No active campaign budgets in this period, so only actual spend is plotted.</p>
   </div>
 </template>
 

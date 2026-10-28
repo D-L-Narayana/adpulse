@@ -25,11 +25,13 @@ const email = ref('')
 const creating = ref(false)
 const createError = ref<string | null>(null)
 const created = ref<TenantCreated | null>(null)
-const nameError = computed(() => (name.value && name.value.trim().length < 2 ? 'At least 2 characters' : undefined))
-const emailError = computed(() => (email.value && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email.value) ? 'Enter a valid email' : undefined))
-const canCreate = computed(() => name.value.trim().length >= 2 && !emailError.value && email.value.length > 0)
+const touched = ref(false)
+const nameError = computed(() => ((touched.value || name.value) && name.value.trim().length < 2 ? 'At least 2 characters' : undefined))
+const emailError = computed(() => ((touched.value || email.value) && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email.value) ? 'Enter a valid email' : undefined))
+const canCreate = computed(() => name.value.trim().length >= 2 && /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email.value))
 
 async function create() {
+  touched.value = true
   if (!canCreate.value) return
   creating.value = true
   createError.value = null
@@ -110,12 +112,12 @@ async function open() {
             <Input v-model="name" label="Tenant name" placeholder="Acme Retail" required autocomplete="organization" :error="nameError" />
             <Input v-model="email" label="Email" type="email" placeholder="you@company.com" required autocomplete="email" inputmode="email" :error="emailError" hint="No password. You get an API key once; keep it." />
             <p v-if="createError" class="ferr" role="alert">{{ createError }}</p>
-            <Button type="submit" variant="primary" size="lg" block :loading="creating" :disabled="!canCreate">Create tenant</Button>
+            <Button type="submit" variant="primary" size="lg" block :loading="creating">Create tenant</Button>
           </form>
           <form v-else class="form" @submit.prevent="open">
             <Input v-model="key" label="API key" placeholder="Paste the key you were given" mono required autocomplete="off" hint="The key is only stored in this browser." />
             <p v-if="openError" class="ferr" role="alert">{{ openError }}</p>
-            <Button type="submit" variant="primary" size="lg" block :loading="opening" :disabled="!key.trim()">Open tenant</Button>
+            <Button type="submit" variant="primary" size="lg" block :loading="opening">Open tenant</Button>
             <div v-if="recent.length" class="recent">
               <p class="rl">Tenants on this device</p>
               <div class="chips">

@@ -27,6 +27,7 @@ const tone = computed(() => {
   const good = props.lowerIsBetter ? !up : up
   return good ? 'good' : 'bad'
 })
+const showSpark = computed(() => !!props.spark && props.spark.length > 1 && props.spark.some((v) => v !== 0))
 const arrow = computed(() => (props.delta === null || props.delta === undefined ? '' : props.delta > 0.05 ? '↑' : props.delta < -0.05 ? '↓' : '→'))
 </script>
 
@@ -40,14 +41,14 @@ const arrow = computed(() => (props.delta === null || props.delta === undefined 
     <template v-else>
       <div class="value-row">
         <p class="value num">{{ value }}</p>
-        <Sparkline v-if="spark && spark.length > 1" :values="spark" class="spark" />
+        <Sparkline v-if="showSpark" :values="spark!" class="spark" />
       </div>
       <p class="delta" :class="tone">
         <template v-if="delta !== null && delta !== undefined">
           <span class="arrow" aria-hidden="true">{{ arrow }}</span>
           <span class="num">{{ fmtSignedPct(delta, 1) }}</span>
           <span class="sr-only">{{ tone === 'good' ? 'improved' : tone === 'bad' ? 'worsened' : 'unchanged' }}</span>
-          <span class="period"> {{ periodLabel }}</span>
+          <span class="period long"> {{ periodLabel }}</span><span class="period short"> vs prev.</span>
         </template>
         <template v-else-if="sub"><span class="period">{{ sub }}</span></template>
         <template v-else><span class="period">no previous period</span></template>
@@ -113,9 +114,8 @@ const arrow = computed(() => (props.delta === null || props.delta === undefined 
   display: flex;
   gap: 4px;
   align-items: baseline;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  flex-wrap: wrap;
+  line-height: 1.35;
 }
 .delta .num {
   font-weight: 700;
@@ -131,12 +131,24 @@ const arrow = computed(() => (props.delta === null || props.delta === undefined 
 .period {
   color: var(--text-muted);
 }
+.period.short {
+  display: none;
+}
 @media (max-width: 640px) {
   .kpi {
     padding: var(--s-3) var(--s-4);
   }
   .value {
     font-size: 22px;
+  }
+  .spark {
+    display: none;
+  }
+  .period.long {
+    display: none;
+  }
+  .period.short {
+    display: inline;
   }
 }
 </style>

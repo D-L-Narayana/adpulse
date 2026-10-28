@@ -58,6 +58,9 @@ withDefaults(defineProps<{ title?: string; subtitle?: string; padded?: boolean; 
   flex-shrink: 0;
 }
 @media (max-width: 640px) {
+  .card-head {
+    flex-wrap: wrap;
+  }
   .card.padded {
     padding: var(--s-4);
   }

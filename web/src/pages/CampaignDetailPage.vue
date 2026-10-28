@@ -163,7 +163,11 @@ const metricColumns: Column<MetricRow>[] = [
               <div><dt>Deviation</dt><dd class="num" :class="d.pacing.deviation > 0 ? 'bad' : d.pacing.deviation < 0 ? 'warn' : ''">{{ d.pacing.deviation > 0 ? '+' : '' }}{{ fmtMoney(d.pacing.deviation) }}</dd></div>
               <div><dt>Remaining budget</dt><dd class="num">{{ fmtMoney(d.pacing.remainingBudget) }}</dd></div>
               <div v-if="projection"><dt>Projected total at this run-rate</dt><dd class="num">{{ fmtMoney(projection.projected) }} <span class="muted">of {{ fmtMoney(projection.totalBudget) }} ({{ fmtPct(projection.projectedPercent, 0) }})</span></dd></div>
-              <div><dt>Suggested daily budget</dt><dd class="num strong">{{ d.pacing.suggestedDailyBudget ? fmtMoney2(d.pacing.suggestedDailyBudget) : '—' }} <span v-if="c && d.pacing.suggestedDailyBudget" class="muted">vs {{ fmtMoney2(c.dailyBudget) }} now</span></dd></div>
+              <div><dt>Suggested daily budget</dt><dd class="num strong">
+                <template v-if="d.pacing.suggestedDailyBudget">{{ fmtMoney2(d.pacing.suggestedDailyBudget) }} <span v-if="c" class="muted">vs {{ fmtMoney2(c.dailyBudget) }} now</span></template>
+                <template v-else-if="d.pacing.daysTotal > d.pacing.daysElapsed">{{ fmtMoney2(0) }} <span class="muted">budget already exhausted</span></template>
+                <template v-else>— <span class="muted">flight ended</span></template>
+              </dd></div>
             </dl>
           </template>
           <p v-else class="muted small">The API did not return pacing for this campaign.</p>

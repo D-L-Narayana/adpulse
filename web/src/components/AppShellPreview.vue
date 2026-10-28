@@ -15,7 +15,7 @@ const nav = ['Dashboard', 'Import', 'Alerts', 'Settings']
       <span class="logo"></span>
       <div class="tn"><span class="l1"></span><span class="l2"></span></div>
       <ul class="nav"><li v-for="(n, i) in nav" :key="n" :class="{ on: i === 0 }">{{ n }}</li></ul>
-      <span class="live"><span class="dot"></span>Live · updated 2s ago</span>
+      <span class="live"><span class="dot"></span>Live · 2s ago</span>
     </div>
     <div class="main">
       <div class="head"><span class="h">Dashboard</span><span class="seg"><b>7d</b><b class="on">30d</b><b>90d</b></span></div>
@@ -107,6 +107,7 @@ const nav = ['Dashboard', 'Import', 'Alerts', 'Settings']
 }
 .live {
   margin-top: auto;
+  white-space: nowrap;
   display: inline-flex;
   align-items: center;
   gap: 6px;
