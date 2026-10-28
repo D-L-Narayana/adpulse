@@ -14,6 +14,7 @@ namespace AdPulse.Specs.Support;
 public sealed class SpecsFactory : WebApplicationFactory<Program>
 {
     private readonly SqliteConnection? _conn;
+    private string? _sqlServerConnection;
     private readonly bool _sqlServer = string.Equals(Environment.GetEnvironmentVariable("ADPULSE_TEST_PROVIDER"), "SqlServer", StringComparison.OrdinalIgnoreCase);
 
     public SpecsFactory()
@@ -33,7 +34,8 @@ public sealed class SpecsFactory : WebApplicationFactory<Program>
         {
             var cs = Environment.GetEnvironmentVariable("ADPULSE_TEST_CONNECTION") ?? throw new InvalidOperationException("ADPULSE_TEST_CONNECTION not set");
             var b = new Microsoft.Data.SqlClient.SqlConnectionStringBuilder(cs) { InitialCatalog = $"adpulse_spec_{Guid.NewGuid():N}"[..40] };
-            builder.UseSetting("ConnectionStrings:Default", b.ConnectionString);
+            _sqlServerConnection = b.ConnectionString;
+            builder.UseSetting("ConnectionStrings:Default", _sqlServerConnection);
         }
         builder.ConfigureServices(services =>
         {
@@ -45,13 +47,20 @@ public sealed class SpecsFactory : WebApplicationFactory<Program>
 
     protected override void Dispose(bool disposing)
     {
-        if (disposing && _sqlServer)
-        {
-            using var scope = Services.CreateScope();
-            scope.ServiceProvider.GetRequiredService<AdPulseDbContext>().Database.EnsureDeleted();
-        }
         base.Dispose(disposing);
         _conn?.Dispose();
+        if (!disposing || string.IsNullOrEmpty(_sqlServerConnection)) return;
+        try
+        {
+            // Drop the per-scenario SQL Server database without touching the (already disposed) host container.
+            var opts = new DbContextOptionsBuilder<AdPulseDbContext>().UseSqlServer(_sqlServerConnection).Options;
+            using var db = new AdPulseDbContext(opts, new TenantContext());
+            db.Database.EnsureDeleted();
+        }
+        catch
+        {
+            // best-effort cleanup only
+        }
     }
 }
 

@@ -19,6 +19,7 @@ namespace AdPulse.Tests;
 public class AdPulseFactory : WebApplicationFactory<Program>
 {
     private readonly SqliteConnection? _conn;
+    private string? _sqlServerConnection;
     public bool IsSqlServer { get; }
     protected virtual bool Seed => false;
     protected virtual int SeedTenantCount => 0;
@@ -45,7 +46,8 @@ public class AdPulseFactory : WebApplicationFactory<Program>
             var cs = Environment.GetEnvironmentVariable("ADPULSE_TEST_CONNECTION") ?? throw new InvalidOperationException("ADPULSE_TEST_CONNECTION not set");
             // Every factory gets its own database so parallel test classes never share rows.
             var b = new Microsoft.Data.SqlClient.SqlConnectionStringBuilder(cs) { InitialCatalog = $"adpulse_test_{Guid.NewGuid():N}"[..40] };
-            builder.UseSetting("ConnectionStrings:Default", b.ConnectionString);
+            _sqlServerConnection = b.ConnectionString;
+            builder.UseSetting("ConnectionStrings:Default", _sqlServerConnection);
         }
 
         builder.ConfigureServices(services =>
@@ -78,13 +80,25 @@ public class AdPulseFactory : WebApplicationFactory<Program>
 
     protected override void Dispose(bool disposing)
     {
-        if (disposing && IsSqlServer)
-        {
-            using var scope = Services.CreateScope();
-            scope.ServiceProvider.GetRequiredService<AdPulseDbContext>().Database.EnsureDeleted();
-        }
         base.Dispose(disposing);
         _conn?.Dispose();
+        if (disposing) DropSqlServerDatabase(_sqlServerConnection);
+    }
+
+    /// <summary>Drops the per-factory SQL Server database without touching the (already disposed) host container.</summary>
+    internal static void DropSqlServerDatabase(string? connectionString)
+    {
+        if (string.IsNullOrEmpty(connectionString)) return;
+        try
+        {
+            var opts = new DbContextOptionsBuilder<AdPulseDbContext>().UseSqlServer(connectionString).Options;
+            using var db = new AdPulseDbContext(opts, new TenantContext());
+            db.Database.EnsureDeleted();
+        }
+        catch
+        {
+            // best-effort cleanup; never fail a test run because a scratch database could not be dropped
+        }
     }
 }
 
