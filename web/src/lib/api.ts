@@ -132,7 +132,7 @@ export async function request<T>(path: string, opts: RequestOptions = {}): Promi
       const parts = Object.entries(problem.errors).map(([f, msgs]) => `${f}: ${msgs.join(', ')}`)
       if (parts.length) message = parts.join(' · ')
     }
-    // ngrok offline page / HTML from a wrong host is not an API answer.
+    // An HTML page from a wrong host is not an API answer.
     if (!problem && ct.includes('text/html')) message = `Got an HTML page instead of JSON from ${new URL(url).host} (is the API online?)`
     throw new ApiError(kind, message, { status: res.status, code, problem, url })
   }

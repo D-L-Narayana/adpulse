@@ -140,7 +140,6 @@ const curlBulk = computed(
   () => `curl -X POST '${endpointBulk.value}' \\
   -H 'X-Api-Key: ${k.value}' \\
   -H 'Idempotency-Key: $(uuidgen)' \\
-  -H 'ngrok-skip-browser-warning: 1' \\
   -H 'Content-Type: application/json' \\
   -d '{
     "rows": [
@@ -152,10 +151,9 @@ const curlBulk = computed(
 const curlCsv = computed(
   () => `curl -X POST '${endpointCsv.value}?dryRun=true' \\
   -H 'X-Api-Key: ${k.value}' \\
-  -H 'ngrok-skip-browser-warning: 1' \\
   -F 'file=@google-ads-export.csv'`,
 )
-const curlStream = computed(() => `curl -N '${buildUrl('/stream')}' -H 'X-Api-Key: ${k.value}' -H 'ngrok-skip-browser-warning: 1'`)
+const curlStream = computed(() => `curl -N '${buildUrl('/stream')}' -H 'X-Api-Key: ${k.value}'`)
 
 onMounted(() => {
   if (route.hash === '#api') tab.value = 'api'
@@ -262,7 +260,6 @@ onMounted(() => {
           <tbody>
             <tr><td class="mono">X-Api-Key</td><td>Your tenant key — scopes every call; cross-tenant ids return 404.</td></tr>
             <tr><td class="mono">Idempotency-Key</td><td>Any unique string per logical batch; retries with the same key are safe.</td></tr>
-            <tr><td class="mono">ngrok-skip-browser-warning</td><td>Required while the API is published through ngrok.</td></tr>
             <tr><td class="mono">rows[].campaign</td><td>Campaign name; created as Draft on first sight.</td></tr>
             <tr><td class="mono">rows[].channel</td><td>GoogleAds · Meta · Amazon · LinkedIn · DV360</td></tr>
             <tr><td class="mono">rows[].date</td><td>ISO day (YYYY-MM-DD); one row per campaign per day.</td></tr>

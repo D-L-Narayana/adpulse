@@ -23,7 +23,7 @@ describe('API base resolution', () => {
     expect(second).toEqual({ base: 'https://new.ngrok-free.app', source: 'storage' })
   })
   it('adds https:// when the scheme is missing', () => {
-    expect(normalizeBase('reassign-tableful-breeding.ngrok-free.dev')).toBe('https://reassign-tableful-breeding.ngrok-free.dev')
+    expect(normalizeBase('adpulse-api-wbw0.onrender.com')).toBe('https://adpulse-api-wbw0.onrender.com')
     expect(normalizeBase('http://localhost:8080/')).toBe('http://localhost:8080')
     expect(normalizeBase('   ')).toBe('')
   })

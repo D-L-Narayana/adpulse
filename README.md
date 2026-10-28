@@ -20,12 +20,12 @@
 | | |
 |---|---|
 | **Dashboard (Vercel)** | https://adpulse-dashboard-nu.vercel.app |
-| **API (self-hosted, ngrok)** | https://reassign-tableful-breeding.ngrok-free.dev |
-| **Swagger / OpenAPI** | [`/swagger`](https://reassign-tableful-breeding.ngrok-free.dev/swagger) |
-| **Health** | [`/health`](https://reassign-tableful-breeding.ngrok-free.dev/health) |
+| **API (Render, Docker)** | https://adpulse-api-wbw0.onrender.com |
+| **Swagger / OpenAPI** | [`/swagger`](https://adpulse-api-wbw0.onrender.com/swagger) |
+| **Health** | [`/health`](https://adpulse-api-wbw0.onrender.com/health) |
 | **Database** | PostgreSQL 17 on Supabase, schema `adpulse` (SQL Server 2022 and SQLite are first-class too — same model, same tests) |
 
-> The API runs on a home PC behind an ngrok static domain (see [How it is hosted](#how-it-is-hosted)). If the PC is off, the dashboard shows a designed "API unreachable" state with a retry button — it never shows fake data.
+> Fully hosted: the API is a Docker container on Render (auto-deployed from `master`), the dashboard is on Vercel, the data is in Supabase PostgreSQL. No sample or demo data is bundled — every chart is computed from what *you* import. If the API is ever unreachable the dashboard shows a designed error state with a retry button, never fake numbers.
 
 ## What it does
 
@@ -110,10 +110,8 @@ flowchart LR
   subgraph Browser
     UI["Vue 3 dashboard<br/>adpulse-dashboard-nu.vercel.app"]
   end
-  subgraph PC["Windows 11 PC · Scheduled Task 'AdPulse API'"]
-    NG["ngrok<br/>reassign-tableful-breeding.ngrok-free.dev"]
-    API["ASP.NET Core 8 · Kestrel 127.0.0.1:8085"]
-    NG -->|http| API
+  subgraph RENDER["Render · Docker web service (Singapore)"]
+    API["ASP.NET Core 8 · Kestrel<br/>adpulse-api-wbw0.onrender.com"]
     subgraph API_in[" "]
       MW["TenantMiddleware<br/>X-Api-Key → SHA-256 → Tenant"]
       EP["Endpoints<br/>tenants · campaigns · metrics/bulk · imports/csv<br/>datasets/sample · reports · pacing · stream"]
@@ -124,8 +122,8 @@ flowchart LR
       BUS -. SSE .-> EP
     end
   end
-  UI -->|"fetch + X-Api-Key<br/>+ ngrok-skip-browser-warning"| NG
-  UI -->|"SSE (fetch stream)"| NG
+  UI -->|"fetch + X-Api-Key"| API
+  UI -->|"SSE (fetch stream)"| API
   DB -->|Npgsql · schema adpulse| PG[("Supabase PostgreSQL 17")]
   DB -.->|CI / tests| MS[("SQL Server 2022")]
   DB -.->|dev / tests| SQ[("SQLite")]
@@ -196,11 +194,7 @@ event: pacing.alert             data.data = {campaignId, campaign, pacingPercent
 never blocks a request. A heartbeat is sent every 15 s so proxies keep the connection open. It is a single-process
 bus by design — swap in Redis pub/sub if the API ever runs on more than one node.
 
-**ngrok caveat (free tier):** requests whose `User-Agent` looks like a browser get an HTML/plain-text interstitial
-unless they carry the header `ngrok-skip-browser-warning` (any value). The dashboard therefore sends that header on
-every call **and consumes the SSE stream with `fetch()` + `ReadableStream` instead of `EventSource`** (which cannot set
-headers). The API's CORS policy allows that header, `X-Api-Key` and `Idempotency-Key` for `https://adpulse-dashboard-nu.vercel.app`
-and `http://localhost:5173`.
+**Headers:** the dashboard consumes the SSE stream with `fetch()` + `ReadableStream` instead of `EventSource` so it can send `X-Api-Key`. The API's CORS policy allows `X-Api-Key` and `Idempotency-Key` for `https://adpulse-dashboard-nu.vercel.app`.
 
 ## Tech stack
 
@@ -212,7 +206,7 @@ and `http://localhost:5173`.
 | Tenancy | `X-Api-Key` → SHA-256 lookup → scoped `TenantContext` → EF global query filters on `TenantId` + `SaveChanges` write guard |
 | Live | `GET /api/v1/stream` SSE, one bounded `Channel<T>` per subscriber, 15 s heartbeat; daily pacing evaluation emits `pacing.alert` |
 | Tests | xUnit + `WebApplicationFactory` (**136** tests) · Reqnroll BDD (**22** scenarios) · Vitest (**63** tests) · API suites run on SQLite and on a SQL Server 2022 container in CI |
-| Hosting | API on a Windows 11 PC (Scheduled Task at logon → Kestrel :8085 + ngrok static domain) · dashboard on Vercel · ELK pipeline via Docker Compose |
+| Hosting | API as a Docker container on Render (auto-deploy from `master`, health-checked, kept warm by a GitHub Actions pinger) · dashboard on Vercel · PostgreSQL on Supabase · ELK pipeline via Docker Compose |
 
 ## Quick start
 
@@ -242,8 +236,7 @@ cd web && npm test                                              # 63 Vitest test
 ### Quick start with curl (against the live API)
 
 ```bash
-API=https://reassign-tableful-breeding.ngrok-free.dev
-SKIP='ngrok-skip-browser-warning: 1'       # only needed for browser-like clients, harmless for curl
+API=https://adpulse-api-wbw0.onrender.com
 
 # 1. workspace
 curl -s -X POST $API/api/v1/tenants -H 'content-type: application/json' \
@@ -289,7 +282,7 @@ Environment variables override `appsettings*.json` (`__` = `:`).
 | `ASPNETCORE_URLS` / `Urls` | Kestrel default | e.g. `http://127.0.0.1:8085` |
 
 The dashboard (`web/`) reads **`VITE_API_URL`** at build time — the API base URL without a trailing slash
-(`https://reassign-tableful-breeding.ngrok-free.dev` on Vercel, `http://localhost:5000` locally).
+(`https://adpulse-api-wbw0.onrender.com` on Vercel, `http://localhost:5000` locally).
 
 ## API overview (`/api/v1`)
 
@@ -391,8 +384,8 @@ green run on `master`.
 | Rate limiting | `POST /tenants` is behind a fixed-window limiter per client IP (`RateLimiting:SignupPerMinute`, default 20). |
 | Upload caps | CSV uploads are rejected with `413 file_too_large` above **25 MB**; `POST /metrics/bulk` accepts at most **10 000 rows** per call; `Idempotency-Key` ≤ 128 chars. |
 | Validation & errors | Data annotations on every request DTO; failures are RFC 7807 problems with stable `type` codes and a `traceId` so nothing leaks beyond the message. |
-| Transport | Browser ↔ ngrok and dashboard ↔ Vercel are HTTPS; the API binds to `127.0.0.1` only and is reachable solely through the tunnel. |
-| Secrets | `appsettings.Production.json` (Postgres connection string) lives only on the host, not in git. |
+| Transport | HTTPS end to end (Render TLS termination, Vercel TLS, Supabase `sslmode=require`). |
+| Secrets | The Postgres connection string is a Render environment variable; nothing secret is in git. |
 
 ## Logging & ELK
 
@@ -403,21 +396,14 @@ Kibana filter `TenantId:"<guid>"` to follow one advertiser.
 
 ## How it is hosted
 
-Vercel cannot run .NET, so the API runs on the owner's Windows 11 PC and is published through ngrok:
+| Piece | Where | How |
+|---|---|---|
+| API | **Render** free web service, Docker runtime, region Singapore | Built from [`src/AdPulse.Api/Dockerfile`](src/AdPulse.Api/Dockerfile) on every push to `master`; `/health` is the health check. `render.yaml` describes the service. |
+| Dashboard | **Vercel** | `web/` (Vite build) with `VITE_API_URL=https://adpulse-api-wbw0.onrender.com`. |
+| Database | **Supabase** PostgreSQL 17, schema `adpulse` | `Database__Provider=Postgres` + `ConnectionStrings__Default` as Render env vars (pooler host, SSL required). |
+| Keep-warm | GitHub Actions [`keepalive.yml`](.github/workflows/keepalive.yml) | Pings `/health` every 10 minutes so the free instance does not cold-start on a visitor. |
 
-```
-C:\Users\Rahul\apps\adpulse\
-  app\                          dotnet publish -c Release -r win-x64 --self-contained false (ASP.NET Core 8 runtime installed via winget)
-  app\appsettings.Production.json   Database:Provider=Postgres + Supabase connection string, Urls=http://127.0.0.1:8085, Logging:FilePath  (NOT in git)
-  start-adpulse.ps1             kills previous instances, starts AdPulse.Api.exe hidden, waits for /health, starts ngrok --url=reassign-tableful-breeding.ngrok-free.dev
-  install-adpulse-task.ps1      registers Scheduled Task "AdPulse API": at logon (20 s delay), no time limit, restart ×3 on failure
-  logs\                         adpulse-YYYYMMDD.log (Serilog), api-stdout.log, ngrok.log, start-adpulse.log
-```
-
-Both scripts live in [`scripts/`](scripts/). Redeploy = publish, zip, copy to `app\`, `Start-ScheduledTask 'AdPulse API'`.
-The ngrok domain is the account's free static *dev domain* (free plans cannot choose the name); if it ever changes,
-update `VITE_API_URL` on Vercel and `-NgrokDomain` in the task. The PC must be on for the API to be reachable — the
-dashboard shows a designed "API unreachable" state with a retry button in that case, never fake data.
+Redeploy = `git push`. To run your own copy: fork → "New Web Service" on Render from the repo → set the three env vars → deploy `web/` to Vercel with `VITE_API_URL` pointing at your service.
 
 ## Project structure
 
@@ -438,7 +424,7 @@ web/                         Vue 3 + Vite dashboard (deployed to Vercel; expects
   src/stores/                session (per-slug API keys in localStorage, magic-link handling), live, alerts, toast
   tests/                     Vitest suite (63 tests)
 docs/                        benchmarks.md · screenshots/
-scripts/                     start-adpulse.ps1, install-adpulse-task.ps1 (hosting) · bench.py, bench.k6.js (latency)
+scripts/                     bench.py, bench.k6.js (latency benchmarks)
 elk/, docker-compose*.yml    Logstash pipeline; compose for api + SQL Server (or Postgres) + ELK
 .github/workflows/ci.yml     build → test on SQLite (+ Coverlet) → test on SQL Server 2022 service → docker build → web build
 ```

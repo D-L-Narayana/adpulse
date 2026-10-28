@@ -55,8 +55,7 @@ builder.Services.AddSwaggerGen(o =>
     o.AddSecurityRequirement(new() { { new() { Reference = new() { Type = Microsoft.OpenApi.Models.ReferenceType.SecurityScheme, Id = "ApiKey" } }, Array.Empty<string>() } });
 });
 
-// CORS: the Vercel dashboard + local Vite. AllowAnyHeader covers X-Api-Key, Idempotency-Key and ngrok-skip-browser-warning
-// (the header browsers must send so ngrok's free-tier interstitial does not swallow XHR/fetch calls).
+// CORS: the Vercel dashboard + local Vite. AllowAnyHeader covers X-Api-Key and Idempotency-Key
 builder.Services.AddCors(o => o.AddDefaultPolicy(p => p
     .WithOrigins(builder.Configuration.GetSection("Cors:Origins").Get<string[]>() ?? ["http://localhost:5173", "https://adpulse-dashboard-nu.vercel.app"])
     .SetIsOriginAllowedToAllowWildcardSubdomains()

@@ -2,7 +2,7 @@ import { baseHeaders, buildUrl } from './api'
 import type { StreamEvent } from './types'
 
 /**
- * SSE over `fetch` + ReadableStream. EventSource cannot send `X-Api-Key` / `ngrok-skip-browser-warning`,
+ * SSE over `fetch` + ReadableStream. EventSource cannot send `X-Api-Key`,
  * so we parse `text/event-stream` ourselves. Supports `id:` tracking + `Last-Event-ID` on reconnect,
  * `retry:` hints, multi-line `data:`, and exponential back-off capped at 30 s.
  */
@@ -143,7 +143,7 @@ export class SseClient {
     }
     const ct = res.headers.get('content-type') ?? ''
     if (!ct.includes('text/event-stream')) {
-      // Not an SSE endpoint (e.g. ngrok HTML page). Treat as unsupported so the caller can poll.
+      // Not an SSE endpoint (e.g. an HTML error page). Treat as unsupported so the caller can poll.
       this.setState('unsupported', `content-type ${ct || 'unknown'}`)
       return
     }

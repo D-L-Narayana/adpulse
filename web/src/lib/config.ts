@@ -5,12 +5,12 @@
  *  1. `?api=https://host` on the current URL — stored once in localStorage, then stripped from the URL.
  *  2. localStorage `adpulse.apiBase` (set by 1 or from Settings).
  *  3. `VITE_API_URL` build-time env.
- *  4. Mode default: production → ngrok domain, dev → localhost:8080.
+ *  4. Mode default: production → Render API, dev → localhost:8080.
  *
- * The ngrok domain may change, so the runtime override is a first-class feature, not a debug hook.
+ * The runtime override is a first-class feature (point the dashboard at your own API), not a debug hook.
  */
 export const API_BASE_STORAGE_KEY = 'adpulse.apiBase'
-export const PROD_DEFAULT_API = 'https://reassign-tableful-breeding.ngrok-free.dev'
+export const PROD_DEFAULT_API = 'https://adpulse-api-wbw0.onrender.com'
 export const DEV_DEFAULT_API = 'http://localhost:8080'
 
 export interface ConfigEnv {

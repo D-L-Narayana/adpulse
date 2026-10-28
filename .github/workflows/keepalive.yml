@@ -1,0 +1,16 @@
+name: Keep API warm
+
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: GET /health
+        run: |
+          code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 60 https://adpulse-api-wbw0.onrender.com/health)
+          echo "health -> $code"
+          test "$code" = "200"
