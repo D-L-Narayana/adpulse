@@ -1,0 +1,58 @@
+{
+    "from": "2026-09-29",
+    "to": "2026-10-28",
+    "channels": [
+        {
+            "channel": "Meta",
+            "campaigns": 1,
+            "impressions": 3577194,
+            "clicks": 53658,
+            "conversions": 471,
+            "spend": 25762.57,
+            "revenue": 146010,
+            "ctr": 1.5,
+            "cpc": 0.48,
+            "cpa": 54.7,
+            "roas": 5.67
+        },
+        {
+            "channel": "DV360",
+            "campaigns": 1,
+            "impressions": 15004000,
+            "clicks": 30008,
+            "conversions": 75,
+            "spend": 9006.28,
+            "revenue": 21000,
+            "ctr": 0.2,
+            "cpc": 0.3,
+            "cpa": 120.08,
+            "roas": 2.33
+        },
+        {
+            "channel": "LinkedIn",
+            "campaigns": 1,
+            "impressions": 332991,
+            "clicks": 1998,
+            "conversions": 30,
+            "spend": 8449.41,
+            "revenue": 37500,
+            "ctr": 0.6,
+            "cpc": 4.23,
+            "cpa": 281.65,
+            "roas": 4.44
+        }
+    ],
+    "total": {
+        "channel": "Total",
+        "campaigns": 3,
+        "impressions": 18914185,
+        "clicks": 85664,
+        "conversions": 576,
+        "spend": 43218.26,
+        "revenue": 204510,
+        "ctr": 0.45,
+        "cpc": 0.5,
+        "cpa": 75.03,
+        "roas": 4.73
+    }
+}

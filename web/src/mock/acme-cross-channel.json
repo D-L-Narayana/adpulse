@@ -1,0 +1,58 @@
+{
+    "from": "2026-09-29",
+    "to": "2026-10-28",
+    "channels": [
+        {
+            "channel": "Meta",
+            "campaigns": 1,
+            "impressions": 3511322,
+            "clicks": 42136,
+            "conversions": 746,
+            "spend": 23183.79,
+            "revenue": 43268,
+            "ctr": 1.2,
+            "cpc": 0.55,
+            "cpa": 31.08,
+            "roas": 1.87
+        },
+        {
+            "channel": "GoogleAds",
+            "campaigns": 1,
+            "impressions": 288452,
+            "clicks": 12981,
+            "conversions": 761,
+            "spend": 11696.88,
+            "revenue": 47182,
+            "ctr": 4.5,
+            "cpc": 0.9,
+            "cpa": 15.37,
+            "roas": 4.03
+        },
+        {
+            "channel": "Amazon",
+            "campaigns": 1,
+            "impressions": 2406750,
+            "clicks": 9627,
+            "conversions": 1046,
+            "spend": 6748.92,
+            "revenue": 42886,
+            "ctr": 0.4,
+            "cpc": 0.7,
+            "cpa": 6.45,
+            "roas": 6.35
+        }
+    ],
+    "total": {
+        "channel": "Total",
+        "campaigns": 3,
+        "impressions": 6206524,
+        "clicks": 64744,
+        "conversions": 2553,
+        "spend": 41629.59,
+        "revenue": 133336,
+        "ctr": 1.04,
+        "cpc": 0.64,
+        "cpa": 16.31,
+        "roas": 3.2
+    }
+}

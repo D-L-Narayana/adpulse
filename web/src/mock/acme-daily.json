@@ -1,0 +1,212 @@
+[
+    {
+        "date": "2026-09-29",
+        "spend": 1473.22,
+        "revenue": 4593,
+        "clicks": 2297,
+        "conversions": 87
+    },
+    {
+        "date": "2026-09-30",
+        "spend": 1353.64,
+        "revenue": 4205,
+        "clicks": 2129,
+        "conversions": 80
+    },
+    {
+        "date": "2026-10-01",
+        "spend": 1297.98,
+        "revenue": 4195,
+        "clicks": 2020,
+        "conversions": 81
+    },
+    {
+        "date": "2026-10-02",
+        "spend": 1304.33,
+        "revenue": 4282,
+        "clicks": 2000,
+        "conversions": 82
+    },
+    {
+        "date": "2026-10-03",
+        "spend": 1311.3,
+        "revenue": 4192,
+        "clicks": 2049,
+        "conversions": 80
+    },
+    {
+        "date": "2026-10-04",
+        "spend": 1433.61,
+        "revenue": 4595,
+        "clicks": 2245,
+        "conversions": 89
+    },
+    {
+        "date": "2026-10-05",
+        "spend": 1500.19,
+        "revenue": 4672,
+        "clicks": 2345,
+        "conversions": 88
+    },
+    {
+        "date": "2026-10-06",
+        "spend": 1308.02,
+        "revenue": 4364,
+        "clicks": 2003,
+        "conversions": 84
+    },
+    {
+        "date": "2026-10-07",
+        "spend": 1362.08,
+        "revenue": 4267,
+        "clicks": 2142,
+        "conversions": 81
+    },
+    {
+        "date": "2026-10-08",
+        "spend": 1551.86,
+        "revenue": 5000,
+        "clicks": 2416,
+        "conversions": 96
+    },
+    {
+        "date": "2026-10-09",
+        "spend": 1449.96,
+        "revenue": 4530,
+        "clicks": 2286,
+        "conversions": 87
+    },
+    {
+        "date": "2026-10-10",
+        "spend": 1371.37,
+        "revenue": 4414,
+        "clicks": 2138,
+        "conversions": 85
+    },
+    {
+        "date": "2026-10-11",
+        "spend": 1344.17,
+        "revenue": 4422,
+        "clicks": 2069,
+        "conversions": 85
+    },
+    {
+        "date": "2026-10-12",
+        "spend": 1258.28,
+        "revenue": 4097,
+        "clicks": 1941,
+        "conversions": 78
+    },
+    {
+        "date": "2026-10-13",
+        "spend": 1328.99,
+        "revenue": 4466,
+        "clicks": 2042,
+        "conversions": 87
+    },
+    {
+        "date": "2026-10-14",
+        "spend": 1431.04,
+        "revenue": 4383,
+        "clicks": 2260,
+        "conversions": 83
+    },
+    {
+        "date": "2026-10-15",
+        "spend": 1424.29,
+        "revenue": 4391,
+        "clicks": 2226,
+        "conversions": 83
+    },
+    {
+        "date": "2026-10-16",
+        "spend": 1249.07,
+        "revenue": 3911,
+        "clicks": 1947,
+        "conversions": 75
+    },
+    {
+        "date": "2026-10-17",
+        "spend": 1416.04,
+        "revenue": 4690,
+        "clicks": 2168,
+        "conversions": 90
+    },
+    {
+        "date": "2026-10-18",
+        "spend": 1468.39,
+        "revenue": 4569,
+        "clicks": 2300,
+        "conversions": 86
+    },
+    {
+        "date": "2026-10-19",
+        "spend": 1393.68,
+        "revenue": 4623,
+        "clicks": 2155,
+        "conversions": 90
+    },
+    {
+        "date": "2026-10-20",
+        "spend": 1450.61,
+        "revenue": 4673,
+        "clicks": 2280,
+        "conversions": 91
+    },
+    {
+        "date": "2026-10-21",
+        "spend": 1290.31,
+        "revenue": 4236,
+        "clicks": 2006,
+        "conversions": 82
+    },
+    {
+        "date": "2026-10-22",
+        "spend": 1334.51,
+        "revenue": 4447,
+        "clicks": 2036,
+        "conversions": 85
+    },
+    {
+        "date": "2026-10-23",
+        "spend": 1498,
+        "revenue": 4823,
+        "clicks": 2318,
+        "conversions": 92
+    },
+    {
+        "date": "2026-10-24",
+        "spend": 1403.61,
+        "revenue": 4391,
+        "clicks": 2185,
+        "conversions": 83
+    },
+    {
+        "date": "2026-10-25",
+        "spend": 1256.5,
+        "revenue": 4075,
+        "clicks": 1951,
+        "conversions": 79
+    },
+    {
+        "date": "2026-10-26",
+        "spend": 1408.26,
+        "revenue": 4498,
+        "clicks": 2177,
+        "conversions": 85
+    },
+    {
+        "date": "2026-10-27",
+        "spend": 1429.45,
+        "revenue": 4427,
+        "clicks": 2255,
+        "conversions": 85
+    },
+    {
+        "date": "2026-10-28",
+        "spend": 1526.83,
+        "revenue": 4905,
+        "clicks": 2358,
+        "conversions": 94
+    }
+]
