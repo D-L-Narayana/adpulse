@@ -16,7 +16,7 @@ public static class ReportEndpoints
         {
             var end = to ?? DateOnly.FromDateTime(DateTime.UtcNow);
             var start = from ?? end.AddDays(-29);
-            if (end < start) return CampaignEndpoints.Err(http, 422, "invalid_range", "'to' must be on or after 'from'.");
+            if (end < start) return Problems.Create(http, 422, "invalid_range", "'to' must be on or after 'from'.");
 
             var grouped = await db.DailyMetrics.AsNoTracking()
                 .Where(m => m.Date >= start && m.Date <= end)
@@ -38,21 +38,22 @@ public static class ReportEndpoints
                 .Select(x => Kpi.Row(x.Channel.ToString(), x.Campaigns, x.Impressions, x.Clicks, x.Conversions, (decimal)x.Spend, (decimal)x.Revenue)).ToList();
             var total = Kpi.Row("Total", rows.Sum(r => r.Campaigns), rows.Sum(r => r.Impressions), rows.Sum(r => r.Clicks), rows.Sum(r => r.Conversions), rows.Sum(r => r.Spend), rows.Sum(r => r.Revenue));
             return Results.Ok(new CrossChannelReport(start, end, rows, total));
-        });
+        }).WithSummary("Per-channel KPI report (CTR, CPC, CPA, ROAS) + total row");
 
         // Daily trend for the dashboard chart.
-        g.MapGet("/daily", async (AdPulseDbContext db, DateOnly? from, DateOnly? to) =>
+        g.MapGet("/daily", async (AdPulseDbContext db, DateOnly? from, DateOnly? to, HttpContext http) =>
         {
             var end = to ?? DateOnly.FromDateTime(DateTime.UtcNow);
             var start = from ?? end.AddDays(-29);
+            if (end < start) return Problems.Create(http, 422, "invalid_range", "'to' must be on or after 'from'.");
             var rows = await db.DailyMetrics.AsNoTracking()
                 .Where(m => m.Date >= start && m.Date <= end)
                 .GroupBy(m => m.Date)
                 .Select(grp => new { Date = grp.Key, Spend = grp.Sum(m => (double)m.Spend), Revenue = grp.Sum(m => (double)m.Revenue), Clicks = grp.Sum(m => m.Clicks), Conversions = grp.Sum(m => m.Conversions) })
                 .OrderBy(x => x.Date)
                 .ToListAsync();
-            return Results.Ok(rows.Select(x => new { x.Date, Spend = Math.Round((decimal)x.Spend, 2), Revenue = Math.Round((decimal)x.Revenue, 2), x.Clicks, x.Conversions }));
-        });
+            return Results.Ok(rows.Select(x => new DailyTrendRow(x.Date, Math.Round((decimal)x.Spend, 2), Math.Round((decimal)x.Revenue, 2), x.Clicks, x.Conversions)));
+        }).WithSummary("Daily spend/revenue trend across all channels");
 
         return app;
     }

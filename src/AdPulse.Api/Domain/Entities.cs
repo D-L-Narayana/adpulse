@@ -1,7 +1,13 @@
+using System.Text.Json.Serialization;
+
 namespace AdPulse.Api.Domain;
 
+[JsonConverter(typeof(JsonStringEnumConverter))]
 public enum Channel { GoogleAds = 1, Meta = 2, Amazon = 3, LinkedIn = 4, DV360 = 5 }
-public enum CampaignStatus { Draft = 0, Active = 1, Paused = 2, Ended = 3 }
+
+/// <summary>Lifecycle: Draft -> Active <-> Paused -> Completed. Completed is terminal.</summary>
+[JsonConverter(typeof(JsonStringEnumConverter))]
+public enum CampaignStatus { Draft = 0, Active = 1, Paused = 2, Completed = 3 }
 
 /// <summary>An advertiser account. Every other row belongs to exactly one tenant.</summary>
 public sealed class Tenant

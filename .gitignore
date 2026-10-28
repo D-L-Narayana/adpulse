@@ -8,3 +8,6 @@ dist/
 .vs/
 .idea/
 TestResults/
+.vercel/
+*.feature.cs
+web/.vercel/

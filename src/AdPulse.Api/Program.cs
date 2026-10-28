@@ -1,7 +1,7 @@
+using AdPulse.Api.Contracts;
 using AdPulse.Api.Data;
 using AdPulse.Api.Endpoints;
 using AdPulse.Api.Tenancy;
-using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Serilog;
 using Serilog.Formatting.Compact;
@@ -37,6 +37,7 @@ builder.Services.AddDbContext<AdPulseDbContext>(o =>
         o.UseSqlite(connString);
 });
 
+builder.Services.AddProblemDetails();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(o =>
 {
@@ -44,9 +45,11 @@ builder.Services.AddSwaggerGen(o =>
     o.AddSecurityDefinition("ApiKey", new() { Type = Microsoft.OpenApi.Models.SecuritySchemeType.ApiKey, In = Microsoft.OpenApi.Models.ParameterLocation.Header, Name = TenantMiddleware.HeaderName });
     o.AddSecurityRequirement(new() { { new() { Reference = new() { Type = Microsoft.OpenApi.Models.ReferenceType.SecurityScheme, Id = "ApiKey" } }, Array.Empty<string>() } });
 });
-builder.Services.AddCors(o => o.AddDefaultPolicy(p => p.WithOrigins(builder.Configuration.GetSection("Cors:Origins").Get<string[]>() ?? ["http://localhost:5173"]).AllowAnyHeader().AllowAnyMethod()));
+builder.Services.AddCors(o => o.AddDefaultPolicy(p => p
+    .WithOrigins(builder.Configuration.GetSection("Cors:Origins").Get<string[]>() ?? ["http://localhost:5173"])
+    .SetIsOriginAllowedToAllowWildcardSubdomains()
+    .AllowAnyHeader().AllowAnyMethod()));
 builder.Services.AddHealthChecks().AddDbContextCheck<AdPulseDbContext>();
-builder.Services.ConfigureHttpJsonOptions(o => o.SerializerOptions.Converters.Add(new System.Text.Json.Serialization.JsonStringEnumConverter()));
 
 var app = builder.Build();
 
@@ -56,7 +59,8 @@ if (!app.Configuration.GetValue<bool>("Database:SkipInit"))
     using var scope = app.Services.CreateScope();
     var db = scope.ServiceProvider.GetRequiredService<AdPulseDbContext>();
     await db.Database.EnsureCreatedAsync();
-    if (app.Configuration.GetValue("Database:Seed", true)) await DbSeeder.SeedAsync(db);
+    if (app.Configuration.GetValue("Database:Seed", true))
+        await DbSeeder.SeedAsync(db, app.Configuration.GetValue("Database:SeedTenantCount", DbSeeder.DefaultTenantCount));
 }
 
 app.UseSerilogRequestLogging(o =>
@@ -68,18 +72,16 @@ app.UseSerilogRequestLogging(o =>
         if (tenant?.IsResolved == true) diag.Set("TenantId", tenant.TenantId);
     };
 });
-app.UseExceptionHandler(e => e.Run(async http =>
-{
-    http.Response.StatusCode = 500;
-    await http.Response.WriteAsJsonAsync(new { type = "internal_error", title = "Internal Server Error", status = 500, detail = "Unexpected error.", traceId = http.TraceIdentifier });
-}));
+app.UseExceptionHandler(e => e.Run(http => Problems.Write(http, StatusCodes.Status500InternalServerError, "internal_error", "An unexpected error occurred.")));
+app.UseStatusCodePages(); // bare 404/405 from routing also come back as problem+json
 app.UseCors();
 app.UseSwagger();
-app.UseSwaggerUI();
+app.UseSwaggerUI(o => { o.RoutePrefix = "swagger"; o.DocumentTitle = "AdPulse API"; });
 app.UseMiddleware<TenantMiddleware>();
 
+app.MapGet("/", () => Results.Redirect("/swagger")).ExcludeFromDescription();
 app.MapHealthChecks("/health");
-app.MapGet("/api/me", (TenantContext t) => Results.Ok(new { t.Tenant!.Id, t.Tenant.Name })).WithTags("Tenant");
+app.MapGet("/api/me", (TenantContext t) => Results.Ok(new { t.Tenant!.Id, t.Tenant.Name })).WithTags("Tenant").WithSummary("Who am I (resolved tenant)");
 app.MapCampaigns();
 app.MapReports();
 
