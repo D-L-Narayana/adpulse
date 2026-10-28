@@ -1,0 +1,88 @@
+/* AdPulse design tokens — light theme, warm neutrals, one accent (Hydra Teal). */
+:root {
+  /* Surfaces */
+  --bg: #f7f6f2;
+  --surface: #f9f8f5;
+  --surface-alt: #fbfbf9;
+  --surface-sunken: #f1efe9;
+  --border: #d4d1ca;
+  --border-soft: #e5e2db;
+
+  /* Text */
+  --text: #28251d;
+  --text-muted: #7a7974;
+  --text-faint: #bab9b4;
+  --text-on-accent: #ffffff;
+
+  /* Accent */
+  --accent: #01696f;
+  --accent-hover: #0c4e54;
+  --accent-soft: #e2eeee;
+  --accent-ring: rgba(1, 105, 111, 0.35);
+
+  /* Semantic (AA on bg) */
+  --error: #a12c7b;
+  --error-soft: #f3e3ee;
+  --warning: #964219;
+  --warning-soft: #f5e6de;
+  --success: #437a22;
+  --success-soft: #e5eedd;
+
+  /* Chart series */
+  --chart-1: #20808d;
+  --chart-2: #a84b2f;
+  --chart-3: #1b474d;
+  --chart-4: #bce2e7;
+  --chart-5: #944454;
+
+  /* Type */
+  --font-sans: 'Satoshi', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+  --text-xs: 0.75rem;   /* 12px — floor */
+  --text-sm: 0.875rem;  /* 14px */
+  --text-md: 1rem;      /* 16px */
+  --text-lg: 1.125rem;  /* 18px */
+  --text-xl: 1.5rem;    /* 24px */
+  --text-2xl: 2rem;     /* 32px */
+  --text-3xl: 2.75rem;  /* 44px */
+  --leading-tight: 1.2;
+  --leading-body: 1.55;
+
+  /* Space (4px grid) */
+  --s-1: 4px;
+  --s-2: 8px;
+  --s-3: 12px;
+  --s-4: 16px;
+  --s-5: 20px;
+  --s-6: 24px;
+  --s-8: 32px;
+  --s-10: 40px;
+  --s-12: 48px;
+  --s-16: 64px;
+
+  /* Radii / elevation */
+  --r-sm: 4px;
+  --r-md: 8px;
+  --r-lg: 12px;
+  --shadow-sm: 0 1px 2px rgba(40, 37, 29, 0.06);
+  --shadow-md: 0 4px 16px rgba(40, 37, 29, 0.1), 0 1px 2px rgba(40, 37, 29, 0.06);
+
+  /* Motion */
+  --ease: cubic-bezier(0.2, 0, 0, 1);
+  --dur-fast: 120ms;
+  --dur: 200ms;
+  --dur-slow: 600ms;
+
+  /* Layout */
+  --content-max: 1280px;
+  --sidebar-w: 224px;
+  --focus-ring: 0 0 0 2px var(--bg), 0 0 0 4px var(--accent);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --dur-fast: 0ms;
+    --dur: 0ms;
+    --dur-slow: 0ms;
+  }
+}

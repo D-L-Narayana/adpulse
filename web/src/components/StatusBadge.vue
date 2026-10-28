@@ -1,11 +1,11 @@
 <script setup lang="ts">
-import type { CampaignStatus } from '../types'
+import { computed } from 'vue'
+import Badge from './ui/Badge.vue'
 
-const props = defineProps<{ status: CampaignStatus }>()
-const tone: Record<CampaignStatus, string> = { Draft: 'neutral', Active: 'ok', Paused: 'warn', Completed: 'info' }
-const cls = () => tone[props.status] ?? 'neutral'
+const props = defineProps<{ status: string }>()
+const tone = computed(() => (({ Active: 'ok', Paused: 'warn', Completed: 'neutral', Draft: 'info' }) as Record<string, 'ok' | 'warn' | 'neutral' | 'info'>)[props.status] ?? 'neutral')
 </script>
 
 <template>
-  <span class="badge" :class="cls()">{{ status }}</span>
+  <Badge :tone="tone">{{ status }}</Badge>
 </template>

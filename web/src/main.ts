@@ -1,5 +1,10 @@
 import { createApp } from 'vue'
 import App from './App.vue'
-import './style.css'
+import { router } from './router'
+import { apiBase } from './lib/config'
+import './styles/base.css'
 
-createApp(App).mount('#app')
+// Resolve (and persist) ?api= before the router strips anything.
+apiBase()
+
+createApp(App).use(router).mount('#app')
