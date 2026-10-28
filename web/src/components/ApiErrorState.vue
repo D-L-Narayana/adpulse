@@ -39,7 +39,7 @@ function saveBase() {
     <Button v-if="unreachable" variant="ghost" @click="editing = !editing">{{ editing ? 'Cancel' : 'Change API URL' }}</Button>
     <template #footer>
       <form v-if="editing" class="edit" @submit.prevent="saveBase">
-        <Input v-model="draft" label="API base URL" placeholder="https://adpulse-api.ngrok-free.app" mono inputmode="url" hint="Stored in this browser only. You can also open any page with ?api=https://host once." />
+        <Input v-model="draft" label="API base URL" placeholder="https://reassign-tableful-breeding.ngrok-free.dev" mono inputmode="url" hint="Stored in this browser only. You can also open any page with ?api=https://host once." />
         <Button type="submit" variant="primary" size="sm">Save and retry</Button>
       </form>
       <span v-else>Tried <code class="url">{{ err?.url || apiBase() }}</code></span>

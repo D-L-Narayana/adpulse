@@ -10,7 +10,7 @@
  * The ngrok domain may change, so the runtime override is a first-class feature, not a debug hook.
  */
 export const API_BASE_STORAGE_KEY = 'adpulse.apiBase'
-export const PROD_DEFAULT_API = 'https://adpulse-api.ngrok-free.app'
+export const PROD_DEFAULT_API = 'https://reassign-tableful-breeding.ngrok-free.dev'
 export const DEV_DEFAULT_API = 'http://localhost:8080'
 
 export interface ConfigEnv {

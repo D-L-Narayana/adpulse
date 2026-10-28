@@ -72,7 +72,7 @@ function forget() {
 
     <Card title="API endpoint" :subtitle="`Currently ${source === 'storage' || source === 'query' ? 'overridden in this browser' : source === 'env' ? 'from the build environment' : 'the build default'}. Change it if the ngrok domain moves.`">
       <form class="baseform" @submit.prevent="saveBase">
-        <Input v-model="base" label="Base URL" mono inputmode="url" placeholder="https://adpulse-api.ngrok-free.app" hint="You can also append ?api=https://host to any AdPulse URL once." />
+        <Input v-model="base" label="Base URL" mono inputmode="url" placeholder="https://reassign-tableful-breeding.ngrok-free.dev" hint="You can also append ?api=https://host to any AdPulse URL once." />
         <div class="row">
           <Button type="submit" variant="primary" :disabled="!base.trim() || base.trim() === apiBase()">Save and reconnect</Button>
           <Button variant="ghost" :disabled="source === 'env' || source === 'default'" @click="resetBase">Reset to default</Button>
